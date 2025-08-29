@@ -1,0 +1,30 @@
+const cartItemService = require('../services/cartItemServices');
+
+class CartItemController {
+  async addItem(req, res) {
+    const { cartId, productId, quantity } = req.body;
+    const item = await cartItemService.addItem(cartId, productId, quantity);
+    res.status(201).json(item);
+  }
+
+  async removeItem(req, res) {
+    const { id } = req.params;
+    await cartItemService.removeItem(id);
+    res.status(204).send();
+  }
+
+  async updateQuantity(req, res) {
+    const { id } = req.params;
+    const { quantity } = req.body;
+    const item = await cartItemService.updateQuantity(id, quantity);
+    res.json(item);
+  }
+
+  async getCartItems(req, res) {
+    const { cartId } = req.params;
+    const items = await cartItemService.getCartItems(cartId);
+    res.json(items);
+  }
+}
+
+module.exports = new CartItemController();
