@@ -4,8 +4,6 @@ const { Sequelize } = require('sequelize');
 
 dotenv.config({ path: './config.env' });
 
-// Use the MySQL connection string
-// console.log(process.env.DATABASE_URL)
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'mysql',
   logging: false,

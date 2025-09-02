@@ -44,8 +44,22 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: process.env.BASE_URL || 'http://localhost:3000',
+        url: process.env.BASE_URL || 'http://localhost:5000',
         description: 'Development server',
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT', // optional, just to document the format
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
       },
     ],
   },
@@ -53,6 +67,7 @@ const swaggerOptions = {
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
 
 // View Engine
 app.set('view engine', 'pug');
@@ -95,8 +110,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/brand', brandRoutes);
-app.use('/api/cart', cartRoutes);
+app.use('/api/brands', brandRoutes);
+app.use('/api/carts', cartRoutes);
 app.use('/api/cart-items', cartItemRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/favorite', favoriteRoutes);
@@ -116,7 +131,6 @@ app.post("/api/payments/webhook", express.raw({ type: "*/*" }), (req, res) => {
 
     // Handle Flutterwave Webhook
     if (req.headers["verif-hash"] === process.env.FLW_SECRET_HASH) {
-      console.log("Flutterwave Webhook:", event);
       // TODO: Update order paymentStatus here
       return res.status(200).send("Webhook received");
     }

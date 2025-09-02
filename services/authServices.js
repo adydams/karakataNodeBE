@@ -2,6 +2,7 @@
 const User = require('../models/userModel');
 const { hashPassword, comparePassword } = require('../utils/passwords');
 const { signToken } = require('../utils/jwt');
+const bcrypt = require("bcryptjs");
 
 class AuthServices {
   // register new user (local)
@@ -74,6 +75,26 @@ class AuthServices {
   // get user by id (for /me)
   async getById(id) {
     return await User.findByPk(id, { attributes: { exclude: ['passwordHash'] } });
+  }
+
+  async changePassword(userId, oldPassword, newPassword)
+   {
+      const user = await User.findByPk(userId); // Sequelize syntax
+      if (!user) throw new Error("User not found");
+
+      // Compare old password with stored hash
+      const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+      if (!isMatch) throw new Error("Old password is incorrect");
+
+      // Hash new password
+      const salt = await bcrypt.genSalt(10);
+      const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+      // Save new password
+      user.passwordHash = newPasswordHash;
+      await user.save();
+
+      return { message: "Password updated successfully" };
   }
 }
 

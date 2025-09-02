@@ -26,6 +26,9 @@ class UserServices {
     await address.destroy();
     return true;
   }
+
+  
+  
 }
 
 module.exports = new UserServices();

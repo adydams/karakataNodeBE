@@ -25,6 +25,7 @@ exports.googleAuth = passport.authenticate("google", { scope: ["profile", "email
 
 exports.googleCallback = (req, res, next) => {
   passport.authenticate("google", { session: false }, async (err, profile) => {
+   
     if (err || !profile) {
       return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
     }

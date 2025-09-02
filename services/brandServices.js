@@ -1,7 +1,7 @@
-const { Brand } = require("../models/brandModel");
-
+const Brand = require("../models/brandModel");
 class BrandServices {
   async createBrand(data) {
+  
     return await Brand.create(data);
   }
 
