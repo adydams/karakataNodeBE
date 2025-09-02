@@ -4,6 +4,18 @@ const Category = require('../models/categoryModel');
 class SubCategoryServices {
   // ✅ Create SubCategory
   static async createSubCategory(data) {
+    // ✅ Check if category exists
+    const category = await Category.findByPk(data.categoryId);
+    if (!category) {
+      throw new Error("Category does not exist");
+    }
+
+    // ✅ Check if name already exists
+    const existing = await SubCategory.findOne({ where: { name: data.name } });
+    if (existing) {
+      throw new Error("SubCategory name must be unique");
+    }
+
     return await SubCategory.create(data);
   }
 

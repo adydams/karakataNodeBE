@@ -4,8 +4,15 @@ const SubCategory = require('../models/subCategoryModel'); // if you have SubCat
 
 class CategoryServices {
   // Create category
-  async createCategory(data) {
-    return await Category.create(data);
+    async createCategory(data) {
+    try {
+      return await Category.create(data);
+    } catch (err) {
+      if (err.name === 'SequelizeUniqueConstraintError') {
+        throw new Error(`Category with name "${data.name}" already exists.`);
+      }
+      throw err;
+    }
   }
 
   // Get all categories with subcategories

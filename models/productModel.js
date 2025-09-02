@@ -30,7 +30,7 @@ const Product = sequelize.define('Product', {
     allowNull: false,
     // Don't define references here - do it in associations
   },
-  storeId: {
+  brandId: {
     type: DataTypes.UUID,
     allowNull: true, // make it optional
   }, 
