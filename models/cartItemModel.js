@@ -1,15 +1,34 @@
-// CartItem.js
+// models/cartItemModel.js
+const { DataTypes } = require("sequelize");
+const sequelize = require("../db/database");
 
-const { DataTypes } = require('sequelize');
-const sequelize = require('../db/database');
+const CartItem = sequelize.define(
+  "CartItem",
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // auto-generate UUID
+      allowNull: false,
+      primaryKey: true,
+    },
+    cartId: {
+      type: DataTypes.UUID, // ✅ match Cart.id
+      allowNull: false,
+    },
+    productId: {
+      type: DataTypes.UUID, // ✅ match Product.id
+      allowNull: false,
+    },
+    quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+    },
+  },
+  {
+    tableName: "cart_items", // ✅ explicit table name
+    timestamps: true,        // ✅ createdAt & updatedAt
+  }
+);
 
-  const CartItem = sequelize.define("CartItem", {
-    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    cartId: { type: DataTypes.INTEGER, allowNull: false },
-    productId: { type: DataTypes.UUID, allowNull: false }, // match Product.id
-    quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
-  });
-
-  
-  module.exports =  CartItem;
-
+module.exports = CartItem;

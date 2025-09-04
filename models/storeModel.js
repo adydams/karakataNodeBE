@@ -1,35 +1,52 @@
-module.exports = (sequelize, DataTypes) => {
-  const Store = sequelize.define("Store", {
+// models/Store.js
+const { DataTypes } = require("sequelize");
+const sequelize = require("../db/database"); // adjust path if needed
+
+const Store = sequelize.define(
+  "Store",
+  {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true
+      allowNull: false,
+      primaryKey: true,
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
     },
     address: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
     },
     email: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: { isEmail: true }
+      validate: { isEmail: true },
     },
     description: {
       type: DataTypes.TEXT,
-      allowNull: true
-    }
-  }, {
+      allowNull: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
     tableName: "stores",
-    timestamps: true
-  });
+    timestamps: true, // Sequelize manages createdAt + updatedAt
+  }
+);
 
-  return Store;
-};
+module.exports = Store;

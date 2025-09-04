@@ -1,12 +1,25 @@
-// Cart.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../db/database');
+// models/cartModel.js
+const { DataTypes } = require("sequelize");
+const sequelize = require("../db/database");
 
+const Cart = sequelize.define(
+  "Cart",
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // auto-generate UUID
+      allowNull: false,
+      primaryKey: true,
+    },
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+  },
+  {
+    tableName: "carts", // ✅ explicit table name
+    timestamps: true,   // ✅ createdAt & updatedAt
+  }
+);
 
-  const Cart = sequelize.define("Cart", {
-    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    userId: { type: DataTypes.UUID, allowNull: false },
-  });
-
-  
-module.exports =Cart
+module.exports = Cart;

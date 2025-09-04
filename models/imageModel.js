@@ -1,20 +1,32 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../db/database');
+const { DataTypes } = require("sequelize");
+const sequelize = require("../db/database");
 
-// models/image.js
+const ProductImage = sequelize.define(
+  "ProductImage",
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // auto-generate UUID
+      allowNull: false,
+      primaryKey: true,
+    },
+    productId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+    url: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    public_id: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    tableName: "product_images", // ✅ consistent naming
+    timestamps: true, // ✅ createdAt & updatedAt auto-managed
+  }
+);
 
-
-
-  const ProductImage = sequelize.define("ProductImage", {
-   url: { type: DataTypes.STRING, allowNull: false }
-  });
-
-  // imageModel.associate = (models) => {
-  //   imageModel.belongsTo(models.Product, {
-  //     foreignKey: "productId",
-  //     as: "product"
-  //   });
- 
-
-  module.exports = ProductImage;
-
+module.exports = ProductImage;
