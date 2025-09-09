@@ -1,10 +1,27 @@
 const cartItemService = require('../services/cartItemServices');
 
 class CartItemController {
-  async addItem(req, res) {
-    const { cartId, productId, quantity } = req.body;
-    const item = await cartItemService.addItem(cartId, productId, quantity);
-    res.status(201).json(item);
+   async addItem(req, res) {
+    try {
+      const { cartId, items } = req.body;
+
+      if (!cartId || !items) {
+        return res
+          .status(400)
+          .json({ success: false, message: "cartId and items are required" });
+      }
+
+      const createdItems = await cartItemService.addItems(cartId, items);
+
+      res.status(201).json({
+        success: true,
+        message: "Items added to cart successfully",
+        data: createdItems,
+      });
+    } catch (error) {
+      console.error("AddItem Error:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
   }
 
   async removeItem(req, res) {
@@ -21,9 +38,28 @@ class CartItemController {
   }
 
   async getCartItems(req, res) {
+    try {
     const { cartId } = req.params;
-    const items = await cartItemService.getCartItems(cartId);
-    res.json(items);
+
+    const cart = await cartItemService.getCartItems(cartId);
+
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: cart,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
   }
 }
 

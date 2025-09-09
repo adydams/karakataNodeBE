@@ -1,39 +1,23 @@
-const { Cart, CartItem, Product } = require("../models");
+const Cart = require("../models/cartModel");
+const CartItem = require("../models/cartItemModel");
 
-class CartServices {
-  async getCart(userId) {
-    let cart = await Cart.findOne({ 
-      where: { userId }, 
-      include: { model: CartItem, as: "items", include: [Product] }
-    });
-    if (!cart) {
-      cart = await Cart.create({ userId });
-    }
-    return cart;
-  }
+exports.createCart = async (userId) => {
+  return await Cart.create({ userId });
+};
 
-  async addItem(userId, productId, quantity = 1) {
-    const cart = await this.getCart(userId);
-    let item = await CartItem.findOne({ where: { cartId: cart.id, productId } });
 
-    if (item) {
-      item.quantity += quantity;
-      await item.save();
-    } else {
-      item = await CartItem.create({ cartId: cart.id, productId, quantity });
-    }
-    return item;
-  }
+exports.getCartById = async (id) => {
+  return await Cart.findByPk(id, {
+    include: [
+      {
+        model: CartItem,
+        as: "items",   // ✅ must match the alias in Cart.hasMany()
+      },
+    ],
+  });
+};
 
-  async removeItem(userId, productId) {
-    const cart = await this.getCart(userId);
-    return await CartItem.destroy({ where: { cartId: cart.id, productId } });
-  }
-
-  async clearCart(userId) {
-    const cart = await this.getCart(userId);
-    return await CartItem.destroy({ where: { cartId: cart.id } });
-  }
-}
-
-module.exports = new CartServices();
+exports.deleteCart = async (id) => {
+  const deleted = await Cart.destroy({ where: { id } });
+  return deleted > 0; // returns true if deleted
+};

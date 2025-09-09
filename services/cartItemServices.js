@@ -1,10 +1,54 @@
 const CartItem = require('../models/cartItemModel');
 
 class CartItemServices {
-  async addItem(cartId, productId, quantity = 1) {
-    return CartItem.create({ cartId, productId, quantity });
+  //  async addItems(cartId, items) {
+  //   if (!Array.isArray(items) || items.length === 0) {
+  //     throw new Error("Items array is required");
+  //   }
+
+  //   const cartItems = items.map(item => ({
+  //     cartId,
+  //     productId: item.productId,
+  //     quantity: item.quantity || 1,
+  //   }));
+
+  //   return await CartItem.bulkCreate(cartItems);
+  // }
+   
+// Handle a single item (internal helper)
+async  addOrUpdateItem(cartId, productId, quantity = 1) {
+  const existingItem = await CartItem.findOne({
+    where: { cartId, productId },
+  });
+
+  if (existingItem) {
+    existingItem.quantity += quantity;
+    return await existingItem.save();
+  } else {
+    return await CartItem.create({ cartId, productId, quantity });
+  }
+}
+
+// Handle multiple items
+async addItems (cartId, items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("Items array is required");
   }
 
+  const results = [];
+  for (const item of items) {
+    const { productId, quantity = 1 } = item;
+    const result = await this.addOrUpdateItem(cartId, productId, quantity);
+    results.push(result);
+  }
+
+  return results;
+};
+
+// (Optional) expose single-item method if needed
+async addItemToCart (cartId, productId, quantity = 1) {
+  return await this.addOrUpdateItem(cartId, productId, quantity);
+};
   async removeItem(id) {
     return CartItem.destroy({ where: { id } });
   }
@@ -14,11 +58,23 @@ class CartItemServices {
   }
 
   async getCartItems(cartId) {
-    return CartItem.findAll({
-      where: { cartId },
-      include: ['product'],
-    });
-  }
+  const cart = await Cart.findByPk(cartId, {
+    include: [
+      {
+        model: CartItem,
+        include: [
+          {
+            model: Product,
+            attributes: ["id", "name", "price", "image"], // only required fields
+          },
+        ],
+      },
+    ],
+  });
+
+  return cart;
+}
+
 }
 
 module.exports = new CartItemServices();

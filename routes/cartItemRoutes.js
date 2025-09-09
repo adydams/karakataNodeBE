@@ -4,9 +4,9 @@ const cartItemController = require('../controllers/cartItemController');
 
 /**
  * @swagger
- * /cart-items:
+ * /api/cart-items:
  *   post:
- *     summary: Add item to cart
+ *     summary: Add multiple items to cart
  *     tags: [CartItems]
  *     requestBody:
  *       required: true
@@ -14,24 +14,33 @@ const cartItemController = require('../controllers/cartItemController');
  *         application/json:
  *           schema:
  *             type: object
- *             required: [cartId, productId]
+ *             required: [cartId, items]
  *             properties:
  *               cartId:
- *                 type: integer
- *               productId:
  *                 type: string
  *                 format: uuid
- *               quantity:
- *                 type: integer
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [productId, quantity]
+ *                   properties:
+ *                     productId:
+ *                       type: string
+ *                       format: uuid
+ *                     quantity:
+ *                       type: integer
+ *                     name:
+ *                       type: string
  *     responses:
  *       201:
- *         description: Item added
+ *         description: Items added
  */
 router.post('/', cartItemController.addItem.bind(cartItemController));
 
 /**
  * @swagger
- * /cart-items/{id}:
+ * /api/cart-items/{id}:
  *   delete:
  *     summary: Remove item from cart
  *     tags: [CartItems]
@@ -49,7 +58,7 @@ router.delete('/:id', cartItemController.removeItem.bind(cartItemController));
 
 /**
  * @swagger
- * /cart-items/{id}:
+ * /api/cart-items/{id}:
  *   patch:
  *     summary: Update item quantity
  *     tags: [CartItems]
@@ -76,7 +85,7 @@ router.patch('/:id', cartItemController.updateQuantity.bind(cartItemController))
 
 /**
  * @swagger
- * /cart-items/cart/{cartId}:
+ * /api/cart-items/cart/{cartId}:
  *   get:
  *     summary: Get all items in a cart
  *     tags: [CartItems]
