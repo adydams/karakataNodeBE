@@ -48,3 +48,22 @@ exports.deleteCart = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+// Clear all items in a cart
+ exports.clearCart = async (req, res) => {
+  try {
+    const { cartId } = req.params;
+
+    await cartService.clearCart(cartId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Cart cleared successfully",
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};

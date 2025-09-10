@@ -24,11 +24,11 @@ class CartItemController {
     }
   }
 
-  async removeItem(req, res) {
-    const { id } = req.params;
-    await cartItemService.removeItem(id);
-    res.status(204).send();
-  }
+  // async removeItem(req, res) {
+  //   const { id } = req.params;
+  //   await cartItemService.removeItem(id);
+  //   res.status(204).send();
+  // }
 
   async updateQuantity(req, res) {
     const { id } = req.params;
@@ -61,6 +61,36 @@ class CartItemController {
     });
   }
   }
+
+  // Remove a single item from the cart
+async removeItem  (req, res)  {
+  try {
+    const { cartId, productId } = req.params;
+    const { quantity } = req.body; // optional, defaults to 1
+
+    const item = await cartService.removeItem(cartId, productId, quantity || 1);
+
+    if (!item) {
+      return res.status(200).json({
+        success: true,
+        message: "Item removed completely from cart",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Item quantity updated",
+      data: item,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+
 }
 
 module.exports = new CartItemController();

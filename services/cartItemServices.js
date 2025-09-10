@@ -49,9 +49,9 @@ async addItems (cartId, items) {
 async addItemToCart (cartId, productId, quantity = 1) {
   return await this.addOrUpdateItem(cartId, productId, quantity);
 };
-  async removeItem(id) {
-    return CartItem.destroy({ where: { id } });
-  }
+  // async removeItem(id) {
+  //   return CartItem.destroy({ where: { id } });
+  // }
 
   async updateQuantity(id, quantity) {
     return CartItem.update({ quantity }, { where: { id } });
@@ -73,7 +73,29 @@ async addItemToCart (cartId, productId, quantity = 1) {
   });
 
   return cart;
-}
+  }
+
+ // Handle removing a single item (internal helper)
+  async removeItem(cartId, productId, quantity = 1) {
+    const existingItem = await CartItem.findOne({
+      where: { cartId, productId },
+    });
+
+    if (!existingItem) {
+      throw new Error("Item not found in cart");
+    }
+
+    if (existingItem.quantity > quantity) {
+      // Reduce quantity
+      existingItem.quantity -= quantity;
+      return await existingItem.save();
+    } else {
+      // Remove item completely if quantity to remove >= existing quantity
+      await existingItem.destroy();
+      return null;
+    }
+  }
+ 
 
 }
 

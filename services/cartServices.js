@@ -21,3 +21,11 @@ exports.deleteCart = async (id) => {
   const deleted = await Cart.destroy({ where: { id } });
   return deleted > 0; // returns true if deleted
 };
+
+ // Handle clearing all items from a cart (internal helper)
+  exports.clearCart = async (cartId) => {
+    await CartItem.destroy({
+      where: { cartId },
+    });
+    return { message: "Cart cleared successfully" };
+  }
