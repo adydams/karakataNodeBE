@@ -98,12 +98,16 @@ class ProductServices {
     });
   }
 
-  async getProductById(id) {
-    return await Product.findById(id)
-      .populate("brandId")
-      .populate("subCategoryId")
-      .populate("storeId");
-  }
+async getProductById(id) {
+  return await Product.findByPk(id, {
+    include: [
+      { model: Brand, as: "brand", required: false },
+      { model: SubCategory, as: "subcategory" ,  required: true},
+      { model: Store, as: "store" ,  required: false},
+    ],
+  });
+}
+
 
   async updateProduct(id, updates, files) {
     if (files && files.length > 0) {
