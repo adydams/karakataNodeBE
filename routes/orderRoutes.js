@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
-
+const { auth } = require("../middlewares/auth");
 /**
  * @swagger
  * tags:
@@ -44,7 +44,7 @@ const orderController = require("../controllers/orderController");
  *       400:
  *         description: Bad request
  */
-router.post("/checkout", (req, res) => orderController.checkout(req, res));
+router.post("/checkout", auth, (req, res) => orderController.checkout(req, res));
 
 /**
  * @swagger

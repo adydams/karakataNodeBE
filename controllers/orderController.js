@@ -6,9 +6,8 @@ class OrderController {
    */
   async checkout(req, res) {
     try {
-      const userId = req.user?.id || 1; // 👈 replace with real auth
+      const userId = req.user?.id ; // 👈 replace with real auth
       const { shippingAddress, gateway, email } = req.body;
-
       const { order, paymentUrl } = await OrderServices.checkout(userId, {
         shippingAddress,
         gateway,

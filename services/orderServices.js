@@ -1,3 +1,4 @@
+const { use } = require("passport");
 const { sequelize, Order, OrderItem, Cart, CartItem, Product } = require("../models");
 const PaymentService = require("./paymentServices");
 
@@ -27,7 +28,7 @@ class OrderServices {
           orderId: order.id,
           productId: item.productId,
           productName: item.productName,
-          unitPrice: item.unitPrice,
+          price: item.unitPrice,
           quantity: item.quantity,
           subtotal: item.subtotal,
         },
@@ -73,15 +74,21 @@ class OrderServices {
    * Checkout → from cart
    */
   async checkout(userId, { shippingAddress, phone, notes, gateway, email }) {
+     
     const t = await sequelize.transaction();
     try {
       const cart = await Cart.findOne({
-        where: { userId },
+        where: { userId }, // filter by the userId column on Cart
         include: [
           {
             model: CartItem,
             as: "items",
-            include: [{ model: Product, as: "product" }],
+            include: [
+              {
+                model: Product,
+                as: "product",
+              },
+            ],
           },
         ],
         transaction: t,
@@ -91,7 +98,8 @@ class OrderServices {
       if (!cart || cart.items.length === 0) {
         throw new Error("Cart is empty");
       }
-
+      console.log("********* order service");
+     
       let totalAmount = 0;
       const items = cart.items.map((item) => {
         const subtotal = item.quantity * item.product.price;

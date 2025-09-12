@@ -1,29 +1,24 @@
 const express = require("express");
 const router = express.Router();
 const cartController = require("../controllers/cartController");
-
+const {auth} = require("../middlewares/auth");
 /**
  * @swagger
  * /api/carts:
  *   post:
  *     summary: Create a new cart
  *     tags: [Carts]
+ *     security:
+ *       - bearerAuth: []   # 👈 indicate JWT is required
  *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [userId]
- *             properties:
- *               userId:
- *                 type: string
- *                 format: uuid
+ *       required: false     # no body needed
  *     responses:
  *       201:
  *         description: Cart created
+ *       401:
+ *         description: Unauthorized (missing or invalid token)
  */
-router.post("/", cartController.createCart);
+router.post("/", auth, cartController.createCart);
 
 /**
  * @swagger
@@ -42,7 +37,7 @@ router.post("/", cartController.createCart);
  *       200:
  *         description: Cart retrieved
  */
-router.get("/:id", cartController.getCart);
+router.get("/:id",auth, cartController.getCart);
 
 /**
  * @swagger
@@ -61,7 +56,7 @@ router.get("/:id", cartController.getCart);
  *       200:
  *         description: Cart deleted
  */
-router.delete("/:id", cartController.deleteCart);
+router.delete("/:id",auth, cartController.deleteCart);
  
 
 module.exports = router;
