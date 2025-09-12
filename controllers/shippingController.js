@@ -5,7 +5,11 @@ class ShippingController {
   // Shipping Address
   async createAddress(req, res) {
     try {
-      const address = await shippingService.createShippingAddress(req.body);
+      const payload = {
+        ...req.body,
+        userId: req.user.id
+      }
+      const address = await shippingService.createShippingAddress(payload);
       res.status(201).json(address);
     } catch (err) { res.status(400).json({ error: err.message }); }
   }

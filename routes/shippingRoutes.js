@@ -12,7 +12,7 @@ const { authenticate, authorize } = require('../middlewares/auth');
 
 /**
  * @swagger
- * /api/shipping:
+ * /api/shipping/address:
  *   post:
  *     summary: Create a shipping address
  *     tags: [Shipping]
@@ -23,10 +23,8 @@ const { authenticate, authorize } = require('../middlewares/auth');
  *           schema:
  *             type: object
  *             properties:
- *               userId:
- *                 type: string
  *               orderId:
- *                 type: integer
+ *                 type: string
  *               addressLine1:
  *                 type: string
  *               addressLine2:
@@ -43,7 +41,7 @@ const { authenticate, authorize } = require('../middlewares/auth');
  *       200:
  *         description: Shipping address created
  */
-router.post('/',
+router.post('/address',
     authenticate,
     authorize('customer', 'admin'),
    shippingController.createAddress);
@@ -166,7 +164,7 @@ router.delete('/:id', shippingController.deleteAddress);
  *         name: orderId
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
  *     responses:
  *       200:
  *         description: List of deliveries

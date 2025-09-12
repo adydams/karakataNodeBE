@@ -1,18 +1,19 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
+const orderController = require("../controllers/orderController");
 
 /**
  * @swagger
  * tags:
  *   name: Orders
- *   description: API for managing orders
+ *   description: Order management & checkout
  */
 
 /**
  * @swagger
- * /orders/place:
+ * /orders/checkout:
  *   post:
- *     summary: Place a new order
+ *     summary: Create an order and initialize payment
  *     tags: [Orders]
  *     requestBody:
  *       required: true
@@ -20,78 +21,50 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - shippingAddress
+ *               - gateway
+ *               - email
  *             properties:
- *               productId:
+ *               shippingAddressId:
+ *                 type: uuid
+ *                 example: "123 Main St, Lagos"
+ *               phone:
  *                 type: string
- *                 example: "64adce1821"
- *               quantity:
- *                 type: number
- *                 example: 2
+ *                 example: "+2348012345678"
+ *               notes:
+ *                 type: string
+ *                 example: "Leave package at the gate"
+ *               gateway:
+ *                 type: string
+ *                 example: "paystack"               
  *     responses:
- *       200:
- *         description: Order placed successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Order placed successfully
+ *       201:
+ *         description: Order created and payment initialized
+ *       400:
+ *         description: Bad request
  */
-router.post('/place', (req, res) => {
-  res.json({ message: 'Order placed successfully' });
-});
+router.post("/checkout", (req, res) => orderController.checkout(req, res));
 
 /**
  * @swagger
- * /orders:
- *   get:
- *     summary: Get all orders
- *     tags: [Orders]
- *     responses:
- *       200:
- *         description: List of all orders
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: List of all orders
- */
-router.get('/', (req, res) => {
-  res.json({ message: 'List of all orders' });
-});
-
-/**
- * @swagger
- * /orders/{id}:
- *   get:
- *     summary: Get a single order by ID
+ * /orders/verify/{orderId}:
+ *   post:
+ *     summary: Verify payment for an order
  *     tags: [Orders]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: orderId
  *         required: true
  *         schema:
- *           type: string
- *         description: The order ID
+ *           type: uuid
+ *         description: Order ID
  *     responses:
  *       200:
- *         description: Details of an order
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Details of order 12345
+ *         description: Payment verification result
+ *       400:
+ *         description: Error verifying order
  */
-router.get('/:id', (req, res) => {
-  res.json({ message: `Details of order ${req.params.id}` });
-});
+router.post("/verify/:orderId", (req, res) => orderController.verify(req, res));
 
 module.exports = router;

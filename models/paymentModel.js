@@ -1,49 +1,63 @@
 // models/payment.js
-module.exports = (sequelize, DataTypes) => {
-  const Payment = sequelize.define('Payment', {
+const { DataTypes } = require("sequelize");
+const sequelize = require("../db/database");
+
+const Payment = sequelize.define(
+  "Payment",
+  {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true
+      primaryKey: true,
     },
     orderId: {
-      type: DataTypes.INTEGER,
-      allowNull: false
+      type: DataTypes.UUID, // ✅ Match your Order.id type
+      allowNull: false,
     },
     userId: {
-      type: DataTypes.UUID,
-      allowNull: false
+      type: DataTypes.UUID, // ✅ Match your User.id type
+      allowNull: false,
     },
     gateway: {
-      type: DataTypes.ENUM('paystack', 'flutterwave'),
-      allowNull: false
+      type: DataTypes.ENUM("paystack", "flutterwave"),
+      allowNull: false,
     },
     amount: {
-      type: DataTypes.DECIMAL(12,2),
-      allowNull: false
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
     },
     currency: {
       type: DataTypes.STRING(10),
-      defaultValue: 'NGN'
+      defaultValue: "NGN",
     },
-    reference: { // gateway reference (Paystack ref or Flutterwave tx_ref)
+    reference: {
+      // Gateway reference (Paystack ref or Flutterwave tx_ref)
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
     },
-    status: { // pending | success | failed
-      type: DataTypes.ENUM('pending','success','failed'),
-      defaultValue: 'pending'
+    paymentUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
-    rawResponse: { type: DataTypes.JSON, allowNull: true }
-  }, {
-    tableName: 'payments',
-    timestamps: true
-  });
+    status: {
+      type: DataTypes.ENUM("PENDING", "SUCCESS", "FAILED"),
+      defaultValue: "PENDING",
+    },
+    rawResponse: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+  },
+  {
+    tableName: "payments",
+    timestamps: true,
+  }
+);
 
-  Payment.associate = (models) => {
-    Payment.belongsTo(models.Order, { foreignKey: 'orderId', as: 'order' });
-    Payment.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
-  };
+// ✅ Associations (define later in index.js or associate methods)
+// Payment.associate = (models) => {
+//   Payment.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
+//   Payment.belongsTo(models.User, { foreignKey: "userId", as: "user" });
+// };
 
-  return Payment;
-};
+module.exports = Payment;

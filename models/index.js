@@ -17,7 +17,8 @@ const User = require("./userModel");
 const Brand = require("./brandModel");
 const SubCategory = require("./subCategoryModel");
 const Store = require("./storeModel");
-
+const Payment = require("./paymentModel");
+const ShippingAddress = require("./shippingAddressModel");
 
 // Validate that all imports are proper Sequelize models
 const models = {
@@ -29,7 +30,9 @@ const models = {
   CartItem,
   Order,
   OrderItem,
-  User
+  User,
+  Payment,
+  ShippingAddress
 };
 
 // Check each model
@@ -99,6 +102,13 @@ try {
  // Product ↔ Store (nullable)
   Store.hasMany(Product, { as: "products", foreignKey: "storeId" });
   Product.belongsTo(Store, { as: "store", foreignKey: "storeId" });
+
+   Payment.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+   Order.hasOne(models.Payment, { foreignKey: "orderId", as: "payment" });
+    Payment.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
+
+    Order.hasOne(models.ShippingAddress, { foreignKey: "orderId", as: "shippingAddress" });
+    ShippingAddress.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
 
   console.log('✓ All model associations created successfully');
 

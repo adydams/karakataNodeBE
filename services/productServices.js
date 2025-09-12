@@ -104,49 +104,77 @@ async getProductById(id) {
       { model: Brand, as: "brand", required: false },
       { model: SubCategory, as: "subcategory" ,  required: true},
       { model: Store, as: "store" ,  required: false},
+      { model: ProductImage, as: "images", required: false },      
+      
     ],
   });
 }
 
 
-  async updateProduct(id, updates, files) {
-    if (files && files.length > 0) {
-      updates.productImages = files.map(file => ({
-        url: file.path,
-        public_id: file.filename
-      }));
-    }
-
-    if (!updates.storeId) updates.storeId = null;
-
-    return await Product.findByIdAndUpdate(id, updates, { new: true })
-      .populate("brandId")
-      .populate("subCategoryId")
-      .populate("storeId");
+    async updateProduct(id, updates, files) {
+  // Handle images if files are uploaded
+  if (files && files.length > 0) {
+    updates.productImages = files.map(file => ({
+      url: file.path,
+      public_id: file.filename
+    }));
   }
 
-   async deleteProduct(id) {
-    // Find product first
-    const product = await Product.findById(id).populate("images");
-    if (!product) {
-      throw new Error("Product not found");
-    }
+  // Ensure storeId is nullable if not provided
+  if (!updates.storeId) updates.storeId = null;
 
-    // Delete images from Cloudinary
-    if (product.images && product.images.length > 0) {
-      for (const img of product.images) {
-        try {
-          await cloudinary.uploader.destroy(img.public_id);
-          await Image.findByIdAndDelete(img._id); // Remove from DB too
-        } catch (err) {
-          console.error("Error deleting image:", err.message);
-        }
+  // 1. Find the product
+  const product = await Product.findByPk(id);
+  if (!product) throw new Error("Product not found");
+
+  // 2. Update product
+  await product.update(updates);
+
+  // (Optional) if you have a ProductImage model and relation, handle saving separately
+  // e.g. if (updates.productImages) await ProductImage.bulkCreate([...])
+
+  // 3. Reload with associations
+  const updatedProduct = await Product.findByPk(id, {
+    include: [
+      { model: Brand, as: "brand", required: false },
+      { model: SubCategory, as: "subcategory", required: true },
+      { model: Store, as: "store", required: false },
+      { model: ProductImage, as: "images", required: false },
+    ],
+  });
+
+  return updatedProduct;
+}
+
+
+ async deleteProduct(id) {
+  // 1. Find product with its images
+  const product = await Product.findByPk(id, {
+    include: [{ model: ProductImage, as: "images" }],
+  });
+
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  // 2. Delete images from Cloudinary & DB
+  if (product.images && product.images.length > 0) {
+    for (const img of product.images) {
+      try {
+        await cloudinary.uploader.destroy(img.public_id); // remove from Cloudinary
+        await img.destroy(); // remove from DB
+      } catch (err) {
+        console.error("Error deleting image:", err.message);
       }
     }
-
-    // Delete product
-    return await Product.findByIdAndDelete(id);
   }
+
+  // 3. Delete product itself
+  await product.destroy();
+
+  return { message: "Product and related images deleted successfully" };
+}
+
 }
 
 module.exports = new ProductServices();

@@ -1,47 +1,34 @@
-// services/orderService.js
-const { Order } = require("../models");
-const PaymentService = require("./paymentServices");
+// controllers/orderController.js
+const OrderServices = require("../services/orderServices");
 
-class OrderServices {
-  async create(userId, { items, totalAmount, shippingAddress, gateway, email }) {
-    // Create order in DB
-    const order = await Order.create({
-      userId,
-      totalAmount,
-      paymentGateway: gateway,
-      status: "pending",
-      shippingAddress,
-    });
+class OrderController {
+  async checkout(req, res) {
+    try {
+      const userId = req.user.id; // ✅ pulled from JWT
+      const { shippingAddressId, phone, notes, gateway } = req.body;
 
-    // Initialize payment
-    const payment = await PaymentService.initializePayment({
-      amount: totalAmount,
-      email,
-      gateway,
-    });
+      const result = await OrderServices.checkout(userId, {
+        shippingAddressId,
+        phone,
+        notes,
+        gateway,
+      });
 
-    // Save reference in order
-    await order.update({ paymentReference: payment.reference });
-
-    return { order, paymentUrl: payment.paymentUrl };
+      res.status(201).json(result);
+    } catch (err) {
+      res.status(400).json({ message: err.message });
+    }
   }
 
-  async verify(orderId) {
-    const order = await Order.findByPk(orderId);
-    if (!order) throw new Error("Order not found");
-
-    const verified = await PaymentService.verifyPayment({
-      reference: order.paymentReference,
-      gateway: order.paymentGateway,
-    });
-
-    if (verified) {
-      order.status = "paid";
-      await order.save();
+  async verify(req, res) {
+    try {
+      const { orderId } = req.params;
+      const result = await OrderServices.verify(orderId);
+      res.status(200).json(result);
+    } catch (err) {
+      res.status(400).json({ message: err.message });
     }
-
-    return { order, verified };
   }
 }
 
-module.exports = new OrderServices();
+module.exports = new OrderController();
