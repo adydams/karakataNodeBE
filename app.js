@@ -31,7 +31,6 @@ const subCategoryRoutes = require('./routes/subCategoryRoutes');
 const cartItemRoutes = require('./routes/cartItemRoutes');
 const shippingRoutes = require('./routes/shippingRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
-
 const app = express();
 
 // Swagger configuration
@@ -124,7 +123,7 @@ app.use('/api/stores', storeRoutes);
 app.use('/api/subcategories', subCategoryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/shipping', shippingRoutes);
-
+app.use('/api/orders', orderRoutes);
 // Webhook for payments (Paystack + Flutterwave)
 app.post("/api/payments/webhook", express.raw({ type: "*/*" }), (req, res) => {
   try {

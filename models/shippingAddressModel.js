@@ -13,10 +13,7 @@ const ShippingAddress = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
-    orderId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-    },
+    
     addressLine1: {
       type: DataTypes.STRING,
       allowNull: false,

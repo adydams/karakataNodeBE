@@ -28,6 +28,7 @@ class AuthServices {
     if (!ok) throw new Error('Invalid credentials');
 
     const token = signToken({ id: user.id, role: user.role });
+   
     return { user, token };
   }
 

@@ -23,8 +23,6 @@ const { authenticate, authorize } = require('../middlewares/auth');
  *           schema:
  *             type: object
  *             properties:
- *               orderId:
- *                 type: string
  *               addressLine1:
  *                 type: string
  *               addressLine2:

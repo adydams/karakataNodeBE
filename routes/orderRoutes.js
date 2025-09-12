@@ -11,7 +11,7 @@ const orderController = require("../controllers/orderController");
 
 /**
  * @swagger
- * /orders/checkout:
+ * /api/orders/checkout:
  *   post:
  *     summary: Create an order and initialize payment
  *     tags: [Orders]
@@ -48,7 +48,7 @@ router.post("/checkout", (req, res) => orderController.checkout(req, res));
 
 /**
  * @swagger
- * /orders/verify/{orderId}:
+ * /api/orders/verify/{orderId}:
  *   post:
  *     summary: Verify payment for an order
  *     tags: [Orders]
