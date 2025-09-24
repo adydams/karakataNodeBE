@@ -1,0 +1,43 @@
+version: "3.9"
+
+networks:
+  ecommerce-network:
+    driver: bridge
+
+volumes:
+  kafka-data:
+  zookeeper-data:
+
+services:
+  ecommerce-zookeeper:
+    image: confluentinc/cp-zookeeper:7.2.2
+    container_name: ecommerce-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "22181:2181"
+    networks:
+      - ecommerce-network
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper
+
+  ecommerce-kafka:
+    image: confluentinc/cp-kafka:7.2.2
+    container_name: ecommerce-kafka
+    depends_on:
+      - ecommerce-zookeeper
+    ports:
+      - "29095:29095"   # host access
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: ecommerce-zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9095,PLAINTEXT_HOST://0.0.0.0:29095
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://ecommerce-kafka:9095,PLAINTEXT_HOST://localhost:29095
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - ecommerce-network
+    volumes:
+      - kafka-data:/var/lib/kafka/data

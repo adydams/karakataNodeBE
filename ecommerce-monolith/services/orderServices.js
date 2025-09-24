@@ -1,10 +1,11 @@
-const { use } = require("passport");
+// 
+
 const { sequelize, Order, OrderItem, Cart, CartItem, Product } = require("../models");
-const PaymentService = require("./paymentServices");
+const { publishOrderCreated } = require("../messagingEvents/kafka/producer");
 
 class OrderServices {
   /**
-   * Create an order (with items already provided or from cart).
+   * Create an order (DB only)
    */
   async create(userId, { items, totalAmount, shippingAddressId, phone, notes, gateway, email }, transaction) {
     // 1. Create order
@@ -36,59 +37,32 @@ class OrderServices {
       );
     }
 
-    // 3. Initialize payment
-    try {
-      const payment = await PaymentService.initializePayment({
-        amount: totalAmount,
-        email,
-        gateway,
-      });
-
-      await order.update({ paymentReference: payment.reference }, { transaction });
-
-      return { order, paymentUrl: payment.paymentUrl };
-    } catch (err) {
-      throw new Error(`Payment initialization failed: ${err.message}`);
-    }
-  }
-
-  /**
-   * Verify payment
-   */
-  async verify(orderId) {
-    const order = await Order.findByPk(orderId);
-    if (!order) throw new Error("Order not found");
-
-    const verified = await PaymentService.verifyPayment({
-      reference: order.paymentReference,
-      gateway: order.paymentGateway,
+    // 3. Publish OrderCreated → Kafka
+    await publishOrderCreated({
+      orderId: order.id,
+      userId,
+      amount: totalAmount,
+      email,
+      gateway,
+      redirectUrl: process.env.FRONTEND_URL + "/payment/callback",
     });
 
-    order.status = verified ? "PAID" : "FAILED";
-    await order.save();
-
-    return { order, verified };
+    return { order };
   }
 
   /**
-   * Checkout → from cart
+   * Checkout from Cart → Creates Order + Publish event
    */
-  async checkout(userId, { shippingAddress, phone, notes, gateway, email }) {
-     
+  async checkout(userId, { shippingAddressId, phone, notes, gateway, email }) {
     const t = await sequelize.transaction();
     try {
       const cart = await Cart.findOne({
-        where: { userId }, // filter by the userId column on Cart
+        where: { userId },
         include: [
           {
             model: CartItem,
             as: "items",
-            include: [
-              {
-                model: Product,
-                as: "product",
-              },
-            ],
+            include: [{ model: Product, as: "product" }],
           },
         ],
         transaction: t,
@@ -98,8 +72,7 @@ class OrderServices {
       if (!cart || cart.items.length === 0) {
         throw new Error("Cart is empty");
       }
-      console.log("********* order service");
-     
+
       let totalAmount = 0;
       const items = cart.items.map((item) => {
         const subtotal = item.quantity * item.product.price;
@@ -113,16 +86,19 @@ class OrderServices {
         };
       });
 
-      const { order, paymentUrl } = await this.create(
+      const { order } = await this.create(
         userId,
-        { items, totalAmount, shippingAddress, phone, notes, gateway, email },
+        { items, totalAmount, shippingAddressId, phone, notes, gateway, email },
         t
       );
 
+      // clear cart after order created
       await CartItem.destroy({ where: { cartId: cart.id }, transaction: t });
 
       await t.commit();
-      return { order, paymentUrl };
+
+      // 🚨 PaymentUrl will come later from Payment Service → through event or API
+      return { order };
     } catch (err) {
       await t.rollback();
       throw err;

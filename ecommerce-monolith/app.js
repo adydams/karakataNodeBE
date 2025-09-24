@@ -16,7 +16,7 @@ require("dotenv").config();
  // Debug logs
 
 // const orderRoutes = require('./routes/orderRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
+//const paymentRoutes = require('./routes/paymentRoutes');
 const brandRoutes = require('./routes/brandRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -116,7 +116,7 @@ app.use('/api/cart-items', cartItemRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/favorite', favoriteRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/payments', paymentRoutes);
+//app.use('/api/payments', paymentRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/stores', storeRoutes);

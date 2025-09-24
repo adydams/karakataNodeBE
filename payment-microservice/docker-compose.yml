@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  payment-service:
+    build: .
+    container_name: payment-microservice-app
+    environment:
+      KAFKA_BROKERS: ecommerce-kafka:9092   # 👈 container-to-container
+      KAFKA_CLIENT_ID: payment-microservice
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
+      FLW_SECRET_KEY: ${FLW_SECRET_KEY}
+      BASE_URL: ${BASE_URL}
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "3001:3000"
+    networks:
+      - microservices-network
+      - ecommerce-network
+    # depends_on:
+    #   - ecommerce-kafka
+    restart: unless-stopped
+
+networks:
+  microservices-network:
+    driver: bridge
+  ecommerce-network:
+    external: true   # 👈 must already exist

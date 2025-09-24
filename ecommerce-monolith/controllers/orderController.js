@@ -1,5 +1,5 @@
 const OrderServices = require("../services/orderServices");
-
+const { publishOrderCreated} = require("../messagingEvents/order/orderProducer")
 class OrderController {
   /**
    * Checkout (create order + init payment)
@@ -8,12 +8,17 @@ class OrderController {
     try {
       const userId = req.user?.id ; // 👈 replace with real auth
       const { shippingAddress, gateway, email } = req.body;
-      const { order, paymentUrl } = await OrderServices.checkout(userId, {
-        shippingAddress,
-        gateway,
-        email,
-      });
-
+      const { order, paymentUrl } = await OrderServices.
+        checkout(userId, {
+          shippingAddress,
+          gateway,
+          email,
+        });
+           try {
+      await publishOrderCreated({order, user, gateway: "paystack"});
+    } catch (e) {
+      console.error("⚠️ Failed to publish Kafka event:", e.message);
+    }
       return res.status(201).json({
         success: true,
         message: "Order created, proceed to payment",
