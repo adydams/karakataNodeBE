@@ -1,8 +1,6 @@
 // db/database.js
-const dotenv = require('dotenv');
 const { Sequelize } = require('sequelize');
-
-dotenv.config({ path: './config.env' });
+require('dotenv').config({ path: './config/.env' }); // load from config folder
 
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'mysql',

@@ -37,7 +37,7 @@ router.post("/", auth, cartController.createCart);
  *       200:
  *         description: Cart retrieved
  */
-router.get("/:id",auth, cartController.getCart);
+router.get("/:id", auth, cartController.getCart);
 
 /**
  * @swagger
@@ -56,7 +56,7 @@ router.get("/:id",auth, cartController.getCart);
  *       200:
  *         description: Cart deleted
  */
-router.delete("/:id",auth, cartController.deleteCart);
+router.delete("/:id", auth, cartController.deleteCart);
  
 
 module.exports = router;

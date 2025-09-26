@@ -1,5 +1,7 @@
 // services/authServices.js
 const User = require('../models/userModel');
+const Cart = require('../models/cartModel');
+
 const { hashPassword, comparePassword } = require('../utils/passwords');
 const { signToken } = require('../utils/jwt');
 const bcrypt = require("bcryptjs");
@@ -19,6 +21,7 @@ class AuthServices {
   // login local
   async login({ email, password }) {
     const user = await User.findOne({ where: { email } });
+    const cart = await Cart.findOne({where: {userId:user.id} })
     if (!user) throw new Error('Invalid credentials');
 
     // user may be OAuth-only (no passwordHash)
@@ -27,9 +30,13 @@ class AuthServices {
     const ok = await comparePassword(password, user.passwordHash);
     if (!ok) throw new Error('Invalid credentials');
 
-    const token = signToken({ id: user.id, role: user.role });
-   
-    return { user, token };
+    const token = signToken({
+      id: user.id, 
+      role: user.role, 
+      cartId: cart ? cart.id : null  
+     });
+      
+    return { token };
   }
 
   // find or create from OAuth profile (Google)

@@ -7,15 +7,28 @@ exports.createCart = async (userId) => {
 
 
 exports.getCartById = async (id) => {
-  return await Cart.findByPk(id, {
+  const cart = await Cart.findByPk(id, {
     include: [
       {
         model: CartItem,
-        as: "items",   // ✅ must match the alias in Cart.hasMany()
+        as: "items", // must match alias in association
       },
     ],
   });
+
+  if (!cart) return null;
+
+  // ✅ calculate total amount
+  const totalAmount = cart.items.reduce((sum, item) => {
+    return sum + item.price * item.quantity;
+  }, 0);
+
+  return { 
+    ...cart.toJSON(), 
+    totalAmount 
+  };
 };
+
 
 exports.deleteCart = async (id) => {
   const deleted = await Cart.destroy({ where: { id } });
