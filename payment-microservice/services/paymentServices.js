@@ -179,6 +179,7 @@ const axios = require("axios");
 const { Payment } = require("../models/paymentModel"); // payment-service local model
 const { send } = require("../kafka/producer");
 const crypto = require("crypto");
+const { producer, connectToKafka } = require("../models"); // re-use from index.js
 
 class PaymentServices {
   async initialize({ orderId, userId, amount, email, gateway, redirectUrl }) {
@@ -244,6 +245,22 @@ class PaymentServices {
   }
 
   // called by webhook or manual verify; publishes payment.success/payment.failed
+  // async publishPaymentEvent(success, reference, payload, orderId) {
+  //   const event = {
+  //     type: success ? "payment.success" : "payment.failed",
+  //     reference,
+  //     orderId,
+  //     success,
+  //     payload,
+  //     timestamp: Date.now(),
+  //   };
+
+  //   await send("payment.events", [{ value: JSON.stringify(event) }]);
+  //   return event;
+  // }
+
+  
+  // publish events to Kafka
   async publishPaymentEvent(success, reference, payload, orderId) {
     const event = {
       type: success ? "payment.success" : "payment.failed",
@@ -254,10 +271,18 @@ class PaymentServices {
       timestamp: Date.now(),
     };
 
-    await send("payment.events", [{ value: JSON.stringify(event) }]);
-    return event;
+    try {
+    await producer.send({
+      topic: "payment.events",
+      messages: [{ value: JSON.stringify(event) }],
+    });
+    console.log("Payment event published:", event.type, reference);
+  } catch (err) {
+    console.error("Failed to publish Kafka event:", err);
   }
 
+    return event;
+  }
   // webhook handlers (example trimmed)
   async handleWebhookPaystack(rawBody, signatureHeader) {
     const secret = process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY;
