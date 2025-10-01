@@ -36,7 +36,7 @@ const cartItemController = require('../controllers/cartItemController');
  *       201:
  *         description: Items added
  */
-router.post('/', cartItemController.addItem.bind(cartItemController));
+router.post('/', cartItemController.addItem.bind(cartItemController.addItem));
 
 /**
  * @swagger
@@ -54,7 +54,7 @@ router.post('/', cartItemController.addItem.bind(cartItemController));
  *       204:
  *         description: Item removed
  */
-router.delete('/:id', cartItemController.removeItem.bind(cartItemController));
+router.delete('/:id', cartItemController.removeItem.bind(cartItemController.removeItem));
 
 /**
  * @swagger
@@ -81,7 +81,7 @@ router.delete('/:id', cartItemController.removeItem.bind(cartItemController));
  *       200:
  *         description: Quantity updated
  */
-router.patch('/:id', cartItemController.updateQuantity.bind(cartItemController));
+router.patch('/:id', cartItemController.updateQuantity.bind(cartItemController.updateQuantity));
 
 /**
  * @swagger
@@ -94,11 +94,12 @@ router.patch('/:id', cartItemController.updateQuantity.bind(cartItemController))
  *         in: path
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
  *     responses:
  *       200:
  *         description: List of cart items
  */
-router.get('/cart/:cartId', cartItemController.getCartItems.bind(cartItemController));
+router.get('/cart/:cartId', cartItemController.getCartItems.bind(cartItemController.getCartItems));
 
 module.exports = router;

@@ -86,7 +86,12 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Enable CORS
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.BASE_URL || '*',
+    credentials: true,
+  })
+);
 
 // XSS sanitize
 app.use(xss());

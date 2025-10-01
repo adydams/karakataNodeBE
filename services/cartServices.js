@@ -1,32 +1,50 @@
 const Cart = require("../models/cartModel");
 const CartItem = require("../models/cartItemModel");
-
+const Product =require("../models/productModel")
 exports.createCart = async (userId) => {
   return await Cart.create({ userId });
 };
 
 
 exports.getCartById = async (id) => {
-  const cart = await Cart.findByPk(id, {
-    include: [
-      {
-        model: CartItem,
-        as: "items", // must match alias in association
-      },
-    ],
-  });
+   try {
+      const cart = await Cart.findByPk(id, {
+        include: [
+          {
+            model: CartItem,
+            as: "items",   // alias from your associations
+            include: [
+              {
+                model: Product,
+                as: "product", // alias from CartItem.belongsTo(Product)
+                attributes: ["id", "name", "price"],
+              },
+            ],
+          },
+        ],
+      });
 
-  if (!cart) return null;
+      if (!cart) {
+        return null; // or throw error
+      }
 
-  // ✅ calculate total amount
-  const totalAmount = cart.items.reduce((sum, item) => {
-    return sum + item.price * item.quantity;
-  }, 0);
+      // Calculate total amount
+      let totalAmount = 0;
+      cart.items.forEach(item => {
+        if (item.product) {
+          totalAmount += item.quantity * item.product.price;
+        }
+      });
 
-  return { 
-    ...cart.toJSON(), 
-    totalAmount 
-  };
+      // Convert to plain object so we can add custom fields
+      const cartJson = cart.toJSON();
+      cartJson.totalAmount = totalAmount;
+
+      return cartJson;
+    } catch (error) {
+      console.error("Error fetching cart items:", error);
+      throw error;
+    }
 };
 
 

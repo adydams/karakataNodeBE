@@ -1,4 +1,6 @@
 const CartItem = require('../models/cartItemModel');
+const Cart = require('../models/cartModel')
+const Product = require('../models/productModel')
 
 class CartItemServices {
   //  async addItems(cartId, items) {
@@ -57,22 +59,62 @@ async addItemToCart (cartId, productId, quantity = 1) {
     return CartItem.update({ quantity }, { where: { id } });
   }
 
-  async getCartItems(cartId) {
-  const cart = await Cart.findByPk(cartId, {
-    include: [
-      {
-        model: CartItem,
+  // async getCartItems(cartId) {
+  // const cart = await Cart.findByPk(cartId, {
+  //   include: [
+  //     {
+  //       model: CartItem,
+  //       include: [
+  //         {
+  //           model: Product,
+  //           attributes: ["id", "name", "price", "image"], // only required fields
+  //         },
+  //       ],
+  //     },
+  //   ],
+  // });
+
+  // return cart;
+  // }
+  async  getCartItems(cartId) {
+    try {
+      const cart = await Cart.findByPk(cartId, {
         include: [
           {
-            model: Product,
-            attributes: ["id", "name", "price", "image"], // only required fields
+            model: CartItem,
+            as: "items",   // alias from your associations
+            include: [
+              {
+                model: Product,
+                as: "product", // alias from CartItem.belongsTo(Product)
+                attributes: ["id", "name", "price"],
+              },
+            ],
           },
         ],
-      },
-    ],
-  });
+      });
 
-  return cart;
+      if (!cart) {
+        return null; // or throw error
+      }
+
+      // Calculate total amount
+      let totalAmount = 0;
+      cart.items.forEach(item => {
+        if (item.product) {
+          totalAmount += item.quantity * item.product.price;
+        }
+      });
+
+      // Convert to plain object so we can add custom fields
+      const cartJson = cart.toJSON();
+      cartJson.totalAmount = totalAmount;
+
+      return cartJson;
+    } catch (error) {
+      console.error("Error fetching cart items:", error);
+      throw error;
+    }
   }
 
  // Handle removing a single item (internal helper)

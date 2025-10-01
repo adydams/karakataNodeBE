@@ -1,7 +1,6 @@
-require('dotenv').config({ path: './.env' });
+require('dotenv').config({ path: '.env' });
 const sequelize = require('./db/database');
 const app = require('./app');
-
 // Import routes
 const categoryRoutes = require('./routes/categoryRoutes');
 const subCategoryRoutes = require('./routes/subCategoryRoutes');
