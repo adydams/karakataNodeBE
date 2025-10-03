@@ -32,7 +32,11 @@ const cartItemRoutes = require('./routes/cartItemRoutes');
 const shippingRoutes = require('./routes/shippingRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
 const app = express();
-
+const allowedOrigins = [
+  "http://localhost:5173",      // local dev
+  "http://localhost:5174",
+  "https://karakatang.vercel.app" // production frontend
+];
 // Swagger configuration
 const swaggerOptions = {
   definition: {
@@ -85,13 +89,29 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Enable CORS
+
+
+
+
 app.use(
   cors({
-    origin: process.env.BASE_URL || '*',
-    credentials: true,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true, // if you use cookies/sessions
   })
 );
+// Enable CORS
+// app.use(
+//   cors({
+//     origin: process.env.BASE_URL || '*',
+//     credentials: true,
+//   })
+// );
 
 // XSS sanitize
 app.use(xss());
