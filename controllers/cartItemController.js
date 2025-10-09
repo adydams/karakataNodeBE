@@ -30,12 +30,31 @@ class CartItemController {
   //   res.status(204).send();
   // }
 
-  async updateQuantity(req, res) {
+ async updateQuantity(req, res) {
+  try {
     const { id } = req.params;
     const { quantity } = req.body;
+
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({ message: "Quantity must be at least 1" });
+    }
+
     const item = await cartItemService.updateQuantity(id, quantity);
-    res.json(item);
+
+    if (!item) {
+      return res.status(404).json({ message: "Cart item not found or deleted" });
+    }
+
+    return res.json({
+      message: "Quantity updated successfully",
+      data: item,
+    });
+  } catch (error) {
+    console.error("Error updating quantity:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
+}
+
 
   async getCartItems(req, res) {
     try {

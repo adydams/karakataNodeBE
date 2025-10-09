@@ -23,7 +23,9 @@ class AuthServices {
     const user = await User.findOne({ where: { email } });
     const cart = await Cart.findOne({where: {userId:user.id} })
     if (!user) throw new Error('Invalid credentials');
-
+    if (!cart) {
+    cart = await Cart.create({ userId: user.id });
+    }
     // user may be OAuth-only (no passwordHash)
     if (!user.passwordHash) throw new Error('No password set for this account. Use social login.');
 
@@ -33,7 +35,7 @@ class AuthServices {
     const token = signToken({
       id: user.id, 
       role: user.role, 
-      cartId: cart ? cart.id : null  
+      cartId: cart.id  
      });
       
     return { token };

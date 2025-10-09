@@ -56,8 +56,18 @@ async addItemToCart (cartId, productId, quantity = 1) {
   // }
 
   async updateQuantity(id, quantity) {
-    return CartItem.update({ quantity }, { where: { id } });
+    const [updated] = await CartItem.update(
+    { quantity },
+    { where: { id, isDeleted: false } }
+  );
+
+  if (!updated) {
+    console.log('No record updated — invalid ID or already deleted.');
+    return null;
   }
+
+  return await CartItem.findByPk(id);
+ }
 
   // async getCartItems(cartId) {
   // const cart = await Cart.findByPk(cartId, {

@@ -2,17 +2,19 @@ const cartService = require("../services/cartServices");
 
 const CartItem = require("../models/cartItemModel");
 const { Cart } = require("../models");
+
 exports.createCart = async (req, res) => {
   try {
     
     const userId  = req.user.id;
-
     if (!userId) {
       return res.status(400).json({ success: false, error: "userId is required" });
     }
     
     const anyCart = await Cart.findOne({
-        where: { userId: req.user.id }, // filter by userId column
+        where: { 
+          userId: userId,
+          isDeleted: false }, // filter by userId column
       });
     if (anyCart) {
       return res.status(400).json({ success: false, error: "An active cart exist" });

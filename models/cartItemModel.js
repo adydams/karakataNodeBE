@@ -24,6 +24,10 @@ const CartItem = sequelize.define(
       allowNull: false,
       defaultValue: 1,
     },
+    isDeleted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    }
   },
   {
     tableName: "cart_items", // ✅ explicit table name

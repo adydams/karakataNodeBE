@@ -67,7 +67,8 @@ router.delete('/:id', cartItemController.removeItem.bind(cartItemController.remo
  *         in: path
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
  *     requestBody:
  *       required: true
  *       content:
@@ -81,7 +82,7 @@ router.delete('/:id', cartItemController.removeItem.bind(cartItemController.remo
  *       200:
  *         description: Quantity updated
  */
-router.patch('/:id', cartItemController.updateQuantity.bind(cartItemController.updateQuantity));
+router.patch('/:id', cartItemController.updateQuantity.bind(cartItemController));
 
 /**
  * @swagger

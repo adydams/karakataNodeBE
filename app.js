@@ -92,19 +92,24 @@ if (process.env.NODE_ENV === 'development') {
 
 
 
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true, // if you use cookies/sessions
+    origin: "*",
   })
 );
+
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
+//       if (!origin || allowedOrigins.includes(origin)) {
+//         callback(null, true);
+//       } else {
+//         callback(new Error("Not allowed by CORS"));
+//       }
+//     },
+//     credentials: true, // if you use cookies/sessions
+//   })
+// );
 // Enable CORS
 // app.use(
 //   cors({

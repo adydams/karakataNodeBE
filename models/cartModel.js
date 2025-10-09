@@ -15,6 +15,10 @@ const Cart = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
+    isDeleted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    }
   },
   {
     tableName: "carts", // ✅ explicit table name
