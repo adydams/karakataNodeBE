@@ -60,7 +60,7 @@ exports.authenticate = async (req, res, next) => {
  * Role-based access control
  * @param  {...string} allowedRoles Roles allowed to access the endpoint
  */
-exports.authorize = (...allowedRoles) => {
+exports.authorizeRole = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -68,6 +68,36 @@ exports.authorize = (...allowedRoles) => {
 
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Forbidden: insufficient rights' });
+    }
+
+    next();
+  };
+};
+
+
+/**
+ * Middleware: Check user permissions (fine-grained)
+ * Example: checkPermissions("admin:create", "user:view")
+ */
+exports.checkPermissions = (...requiredPermissions) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized: No user found" });
+    }
+
+    // Assuming req.user.permissions is an array like ["admin:create", "offerletter:view"]
+    const userPermissions = req.user.permissions || [];
+
+    const hasPermission = requiredPermissions.every((perm) =>
+      userPermissions.includes(perm)
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: Missing required permissions",
+        requiredPermissions,
+      });
     }
 
     next();

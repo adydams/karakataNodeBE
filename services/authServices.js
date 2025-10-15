@@ -1,6 +1,7 @@
 // services/authServices.js
 const User = require('../models/userModel');
 const Cart = require('../models/cartModel');
+const Role = require('../models/roleModel');
 
 const { hashPassword, comparePassword } = require('../utils/passwords');
 const { signToken } = require('../utils/jwt');
@@ -20,8 +21,11 @@ class AuthServices {
 
   // login local
   async login({ email, password }) {
-    const user = await User.findOne({ where: { email } });
-    const cart = await Cart.findOne({where: {userId:user.id} })
+    const user = await User.findOne({
+    where: { email },
+    include: [{ model: Role, as: 'role' }]
+  });
+  const cart = await Cart.findOne({where: {userId:user.id} })
     if (!user) throw new Error('Invalid credentials');
     if (!cart) {
     cart = await Cart.create({ userId: user.id });
@@ -34,7 +38,7 @@ class AuthServices {
 
     const token = signToken({
       id: user.id, 
-      role: user.role, 
+      role:  user.role ? user.role.name : 'user', 
       cartId: cart.id  
      });
       

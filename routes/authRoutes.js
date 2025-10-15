@@ -57,7 +57,6 @@ router.post("/register", authCtrl.register);
  *               password: { type: string }
  *     responses:
  *       200: { description: Ok }
- *       401: { description: Unauthorized }
  */
 router.post("/login", authCtrl.login);
 

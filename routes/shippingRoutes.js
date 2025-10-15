@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const shippingController = require('../controllers/shippingController');
-const { authenticate, authorize } = require('../middlewares/auth');
+const { authenticate, authorizeRole } = require('../middlewares/auth');
 
 /**
  * @swagger
@@ -41,7 +41,7 @@ const { authenticate, authorize } = require('../middlewares/auth');
  */
 router.post('/address',
     authenticate,
-    authorize('customer', 'admin'),
+    authorizeRole('customer', 'admin'),
    shippingController.createAddress);
 
 /**

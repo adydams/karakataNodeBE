@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const deliveryController = require('../controllers/deliveryController');
-const { authenticate, authorize } = require('../middlewares/auth');
+const { authenticate, authorizeRole } = require('../middlewares/auth');
 
 /**
  * @swagger
@@ -42,7 +42,7 @@ const { authenticate, authorize } = require('../middlewares/auth');
  *       403:
  *         description: Forbidden
  */
-router.post('/', authenticate, authorize('admin', 'courier'), deliveryController.createDelivery);
+router.post('/', authenticate, authorizeRole('admin', 'courier'), deliveryController.createDelivery);
 
 /**
  * @swagger
@@ -67,7 +67,7 @@ router.post('/', authenticate, authorize('admin', 'courier'), deliveryController
  *       403:
  *         description: Forbidden
  */
-router.get('/order/:orderId', authenticate, authorize('admin', 'courier'), deliveryController.listDeliveries);
+router.get('/order/:orderId', authenticate, authorizeRole('admin', 'courier'), deliveryController.listDeliveries);
 
 /**
  * @swagger
@@ -94,7 +94,7 @@ router.get('/order/:orderId', authenticate, authorize('admin', 'courier'), deliv
  *       404:
  *         description: Delivery not found
  */
-router.get('/:id', authenticate, authorize('admin', 'courier'), deliveryController.getDelivery);
+router.get('/:id', authenticate, authorizeRole('admin', 'courier'), deliveryController.getDelivery);
 
 /**
  * @swagger
@@ -131,7 +131,7 @@ router.get('/:id', authenticate, authorize('admin', 'courier'), deliveryControll
  *       404:
  *         description: Delivery not found
  */
-router.put('/:id', authenticate, authorize('admin', 'courier'), deliveryController.updateDelivery);
+router.put('/:id', authenticate, authorizeRole('admin', 'courier'), deliveryController.updateDelivery);
 
 /**
  * @swagger
@@ -158,6 +158,6 @@ router.put('/:id', authenticate, authorize('admin', 'courier'), deliveryControll
  *       404:
  *         description: Delivery not found
  */
-router.delete('/:id', authenticate, authorize('admin', 'courier'), deliveryController.deleteDelivery);
+router.delete('/:id', authenticate, authorizeRole('admin', 'courier'), deliveryController.deleteDelivery);
 
 module.exports = router;

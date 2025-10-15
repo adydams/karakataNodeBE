@@ -41,6 +41,8 @@ const Product = sequelize.define(
     brandId: {
       type: DataTypes.UUID,
       allowNull: true,
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
     },
     qrCode: {
       type: DataTypes.TEXT("long"), // Cloudinary URL or Base64

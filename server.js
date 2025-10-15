@@ -1,11 +1,13 @@
 require('dotenv').config({ path: '.env' });
 const sequelize = require('./db/database');
 const app = require('./app');
+const seedRolesAndPermissions = require('./seeders/seedRolesAndPermissions')
 // Import routes
 const categoryRoutes = require('./routes/categoryRoutes');
 const subCategoryRoutes = require('./routes/subCategoryRoutes');
 const productRoutes = require('./routes/productRoutes');
 const storeRoutes = require('./routes/storeRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Server configuration
 const port = process.env.PORT || 5000;
@@ -25,6 +27,15 @@ const nodeEnv = process.env.NODE_ENV || 'development';
     app.use('/api/subcategories', subCategoryRoutes);
     app.use('/api/products', productRoutes);
     app.use('/api/stores', storeRoutes);
+    app.use('/api/admin', adminRoutes);
+//await sequelize.query("SET FOREIGN_KEY_CHECKS = 0");
+    // Run seed on startup (after DB sync)
+  sequelize.sync({ alter: false }).then(async () => {
+    console.log("Database synced ✅");
+    await seedRolesAndPermissions();
+  });
+
+//await sequelize.query("SET FOREIGN_KEY_CHECKS = 1");
 
     // Start server
     app.listen(port, () => {

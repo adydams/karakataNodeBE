@@ -36,7 +36,7 @@ const cartItemController = require('../controllers/cartItemController');
  *       201:
  *         description: Items added
  */
-router.post('/', cartItemController.addItem.bind(cartItemController.addItem));
+router.post('/', cartItemController.addItem.bind(cartItemController));
 
 /**
  * @swagger
@@ -49,12 +49,13 @@ router.post('/', cartItemController.addItem.bind(cartItemController.addItem));
  *         in: path
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid   
  *     responses:
  *       204:
  *         description: Item removed
  */
-router.delete('/:id', cartItemController.removeItem.bind(cartItemController.removeItem));
+router.delete('/:id', cartItemController.removeItem.bind(cartItemController));
 
 /**
  * @swagger
