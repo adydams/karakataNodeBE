@@ -110,6 +110,23 @@ class AuthServices {
 
       return { message: "Password updated successfully" };
   }
+
+  async updateUser  (id, updates){
+  const user = await User.findByPk(id);
+  if (!user) throw new Error("User not found");
+  await user.update(updates);
+  return user;
+};
+
+async deleteUser (id) {
+  const user = await User.findByPk(id);
+  if (!user) throw new Error("User not found");
+  await user.destroy();
+  return true;
+};
+  
+  
+
 }
 
 module.exports = new AuthServices();

@@ -9,9 +9,7 @@ exports.auth = async (req, res, next) => {
   if (!token) return res.status(401).json({ success: false, message: 'No token provided' });
 
   try {
-    console.log("token", token)
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-     console.log("decoded", decoded)
     // attach minimal user info
     req.user = { id: decoded.id, role: decoded.role };
     next();
