@@ -6,33 +6,37 @@ const Permission = sequelize.define(
   {
     id: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // auto-generate UUID
-      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4, // Auto-generate UUID
       allowNull: false,
+      primaryKey: true,
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
+      unique: true, // Each permission should be unique
     },
     description: {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    isDeleted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false, // Soft delete flag
+    },
   },
   {
-    tableName: "permissions", // ✅ explicit table name
-    timestamps: true,         // ✅ adds createdAt & updatedAt automatically
+    tableName: "permissions", // Explicit table name
+    timestamps: true,         // Adds createdAt & updatedAt automatically
   }
 );
 
-// Associations
-Permission.associate = (models) => {
-  Permission.belongsToMany(models.Role, {
-    through: "RolePermissions",
-    as: "roles",
-    foreignKey: "permissionId",
-  });
-};
+// 🔗 Associations
+// Permission.associate = (models) => {
+//   Permission.belongsToMany(models.Role, {
+//     through: "RolePermissions",
+//     as: "roles",
+//     foreignKey: "permissionId",
+//   });
+// };
 
 module.exports = Permission;

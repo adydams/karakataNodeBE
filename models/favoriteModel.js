@@ -9,10 +9,11 @@ const sequelize = require('../db/database');
     userId: { type: DataTypes.UUID, allowNull: false },
     productId: { type: DataTypes.UUID, allowNull: false }
   }, { tableName: "favorites", 
-    timestamps: true, indexes: [{ unique: true, fields: ["userId", "productId"] }] 
+    timestamps: true,
+     //indexes: [{ unique: true, fields: ["userId", "productId"] }] 
   });
 module.exports = Favorite;
-  // Favorite.associate = (models) => {
+  // Favorite.associate = (models) => { 
   //   Favorite.belongsTo(models.User, { foreignKey: "userId", as: "user" });
   //   Favorite.belongsTo(models.Product, { foreignKey: "productId", as: "product" });
   // };

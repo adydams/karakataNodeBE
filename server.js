@@ -28,9 +28,11 @@ const nodeEnv = process.env.NODE_ENV || 'development';
     app.use('/api/products', productRoutes);
     app.use('/api/stores', storeRoutes);
     app.use('/api/admin', adminRoutes);
-//await sequelize.query("SET FOREIGN_KEY_CHECKS = 0");
-    // Run seed on startup (after DB sync)
-  sequelize.sync({ alter: false }).then(async () => {
+   // Run seed on startup (after DB sync)
+  sequelize.sync({ 
+    alter: false 
+
+  }).then(async () => {
     console.log("Database synced ✅");
     await seedRolesAndPermissions();
   });

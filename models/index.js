@@ -113,8 +113,9 @@ try {
     Payment.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
 
     Order.hasOne(models.ShippingAddress, { foreignKey: "orderId", as: "shippingAddress" });
-    ShippingAddress.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
-    
+    ShippingAddress.belongsTo(models.Order, { foreignKey: "orderId", as: "order",  onDelete: 'SET NULL', });
+    ShippingAddress.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+   
     Role.belongsToMany(Permission, {
       through: "RolePermissions",
       foreignKey: "roleId",

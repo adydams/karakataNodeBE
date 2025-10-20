@@ -31,6 +31,8 @@ const subCategoryRoutes = require('./routes/subCategoryRoutes');
 const cartItemRoutes = require('./routes/cartItemRoutes');
 const shippingRoutes = require('./routes/shippingRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
+const adminPermissionRoutes = require('./routes/adminPermissionRoutes');
+
 const app = express();
 const allowedOrigins = [
   "http://localhost:5173",      // local dev
@@ -154,6 +156,7 @@ app.use('/api/subcategories', subCategoryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/permission', adminPermissionRoutes);
 // Webhook for payments (Paystack + Flutterwave)
 app.post("/api/payments/webhook", express.raw({ type: "*/*" }), (req, res) => {
   try {

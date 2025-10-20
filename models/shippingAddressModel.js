@@ -13,7 +13,10 @@ const ShippingAddress = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
-    
+    orderId: {
+      type: DataTypes.UUID,
+      allowNull: true, // ✅ Must be nullable if ON DELETE SET NULL
+    },
     addressLine1: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -46,9 +49,9 @@ const ShippingAddress = sequelize.define(
 );
 
 // Associations
-ShippingAddress.associate = (models) => {
-  ShippingAddress.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
-  ShippingAddress.belongsTo(models.Order, { foreignKey: 'orderId', as: 'order' });
-};
+// ShippingAddress.associate = (models) => {
+//   ShippingAddress.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+//   ShippingAddress.belongsTo(models.Order, { foreignKey: 'orderId', as: 'order',  onDelete: 'SET NULL' });
+// };
 
 module.exports = ShippingAddress;
