@@ -31,7 +31,7 @@ const nodeEnv = process.env.NODE_ENV || 'development';
    // Run seed on startup (after DB sync)
   sequelize.sync({ 
     alter: false 
-
+   // force: true
   }).then(async () => {
     console.log("Database synced ✅");
     await seedRolesAndPermissions();

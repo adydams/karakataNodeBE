@@ -2,6 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const categoryController = require('../controllers/categoryController');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() }); // keep in memory before upload to Cloudinary
 
 /**
  * @swagger
@@ -19,12 +21,13 @@ const categoryController = require('../controllers/categoryController');
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
  *               - name
  *               - description
+ *               - image
  *             properties:
  *               name:
  *                 type: string
@@ -32,13 +35,17 @@ const categoryController = require('../controllers/categoryController');
  *               description:
  *                 type: string
  *                 example: Devices and gadgets
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Category image file to upload
  *     responses:
  *       201:
  *         description: Category created successfully
  *       400:
  *         description: Bad request
  */
-router.post('/', categoryController.createCategory);
+router.post('/',upload.single('image'), categoryController.createCategory);
 
 /**
  * @swagger

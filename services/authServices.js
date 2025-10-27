@@ -20,7 +20,10 @@ class AuthServices {
   }
 
   // login local
-  async login({ email, password }) {
+  async login({ email, password, bool: isAdminLogin
+
+    
+   }) { 
     const user = await User.findOne({
     where: { email },
     include: [{ model: Role, as: 'role' }]

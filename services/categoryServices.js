@@ -1,12 +1,34 @@
 // services/categoryService.js
 const Category = require('../models/categoryModel');
 const SubCategory = require('../models/subCategoryModel'); // if you have SubCategory
-
+const cloudinary = require("../config/cloudinary");
 class CategoryServices {
   // Create category
-    async createCategory(data) {
+ async createCategory(data, imageFile) {
     try {
-      return await Category.create(data);
+      let imageUrl = null;
+
+      // If image provided, upload to Cloudinary
+      if (imageFile) {
+        const uploadResult = await cloudinary.uploader.upload(imageFile.path, {
+          folder: 'ecommerce/categories',
+          use_filename: true,
+          unique_filename: false,
+          resource_type: 'image',
+        });
+
+        imageUrl = uploadResult.secure_url;
+      }
+
+      // Save category
+      const category = await Category.create({
+        name: data.name,
+        description: data.description,
+        imageUrl: imageUrl,
+      });
+
+      return category;
+
     } catch (err) {
       if (err.name === 'SequelizeUniqueConstraintError') {
         throw new Error(`Category with name "${data.name}" already exists.`);

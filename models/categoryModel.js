@@ -16,6 +16,10 @@ const Category = sequelize.define('Category', {
     type: DataTypes.STRING(100),
     allowNull: false,
   },
+   imageUrl: {
+    type: DataTypes.STRING,
+    allowNull: true, // can be null if no image is uploaded yet
+  },
   dateAdded: {
     type: DataTypes.DATE,
     allowNull: false,
