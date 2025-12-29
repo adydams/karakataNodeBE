@@ -11,7 +11,7 @@ class CategoryServices {
       // If image provided, upload to Cloudinary
       if (imageFile) {
         const uploadResult = await cloudinary.uploader.upload(imageFile.path, {
-          folder: 'ecommerce/categories',
+          folder: 'ecommerce/categories', 
           use_filename: true,
           unique_filename: false,
           resource_type: 'image',
