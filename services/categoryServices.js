@@ -3,7 +3,7 @@ const Category = require('../models/categoryModel');
 const SubCategory = require('../models/subCategoryModel'); // if you have SubCategory
 const Product = require('../models/productModel'); 
 const cloudinary = require("../config/cloudinary");
- const { fn, col } = require('sequelize');
+ const { fn, col, literal } = require('sequelize');
 class CategoryServices {
   // Create category
  async createCategory(data, imageFile) {
@@ -48,10 +48,25 @@ class CategoryServices {
 
  
 
- async getAllCategories() {
-        return await  Category.findAll({
+  async getAllCategories() {
+    return await Category.findAll({
       attributes: {
-        include: [[fn('COUNT', col('subCategories.products.id')), 'totalProducts']]
+        include: [
+          [fn('COUNT', col('subCategories.products.id')), 'totalProducts'],
+
+          [
+            literal(`(
+              SELECT pi.url
+              FROM products p
+              INNER JOIN product_images pi ON pi.productId = p.id
+              INNER JOIN subcategories sc ON sc.id = p.subCategoryId
+              WHERE sc.categoryId = Category.id
+              ORDER BY p.createdAt DESC
+              LIMIT 1
+            )`),
+            'categoryImage'
+          ]
+        ]
       },
       include: [
         {
@@ -69,7 +84,8 @@ class CategoryServices {
       ],
       group: ['Category.id']
     });
- }
+  }
+
 
   // Get category by ID
   // async getCategoryById(id) {
@@ -79,32 +95,44 @@ class CategoryServices {
   // }
 
 
-async getCategoryById(id) {
-  return await Category.findByPk(id, {
-    attributes: {
-      include: [
-        [fn('COUNT', col('subCategories.products.id')), 'totalProducts']
-      ]
-    },
-    include: [
-      {
-        model: SubCategory,
-        as: 'subCategories',
-        attributes: [],
+  async getCategoryById(id) {
+    return await Category.findByPk(id, {
+      attributes: {
         include: [
-          {
-            model: Product,
-            as: 'products',
-            attributes: []
-          }
-        ]
-      }
-    ],
-    group: ['Category.id']
-  });
-}
+          [fn('COUNT', col('subCategories.products.id')), 'totalProducts'],
 
-  
+         [
+            literal(`(
+              SELECT pi.url
+              FROM products p
+              INNER JOIN product_images pi ON pi.productId = p.id
+              INNER JOIN subcategories sc ON sc.id = p.subCategoryId
+              WHERE sc.categoryId = Category.id
+              ORDER BY p.createdAt DESC
+              LIMIT 1
+            )`),
+            'categoryImage'
+          ]
+       
+        ]
+      },
+      include: [
+        {
+          model: SubCategory,
+          as: 'subCategories',
+          attributes: [],
+          include: [
+            {
+              model: Product,
+              as: 'products',
+              attributes: []
+            }
+          ]
+        }
+      ],
+      group: ['Category.id']
+    });
+  }
 
 
   // Update category
