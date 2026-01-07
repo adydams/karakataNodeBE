@@ -1,7 +1,9 @@
 // services/categoryService.js
 const Category = require('../models/categoryModel');
 const SubCategory = require('../models/subCategoryModel'); // if you have SubCategory
+const Product = require('../models/productModel'); 
 const cloudinary = require("../config/cloudinary");
+ const { fn, col } = require('sequelize');
 class CategoryServices {
   // Create category
  async createCategory(data, imageFile) {
@@ -38,18 +40,72 @@ class CategoryServices {
   }
 
   // Get all categories with subcategories
-  async getAllCategories() {
-    return await Category.findAll({
-      include: [{ model: SubCategory, as: 'subCategories' }]
+  // async getAllCategories() {
+  //   return await Category.findAll({
+  //     include: [{ model: SubCategory, as: 'subCategories' }]
+  //   });
+  // }
+
+ 
+
+ async getAllCategories() {
+        return await  Category.findAll({
+      attributes: {
+        include: [[fn('COUNT', col('subCategories.products.id')), 'totalProducts']]
+      },
+      include: [
+        {
+          model: SubCategory,
+          as: 'subCategories',
+          attributes: [],
+          include: [
+            {
+              model: Product,
+              as: 'products',
+              attributes: []
+            }
+          ]
+        }
+      ],
+      group: ['Category.id']
     });
-  }
+ }
 
   // Get category by ID
-  async getCategoryById(id) {
-    return await Category.findByPk(id, {
-      include: [{ model: SubCategory, as: 'subCategories' }]
-    });
-  }
+  // async getCategoryById(id) {
+  //   return await Category.findByPk(id, {
+  //     include: [{ model: SubCategory, as: 'subCategories' }]
+  //   });
+  // }
+
+
+async getCategoryById(id) {
+  return await Category.findByPk(id, {
+    attributes: {
+      include: [
+        [fn('COUNT', col('subCategories.products.id')), 'totalProducts']
+      ]
+    },
+    include: [
+      {
+        model: SubCategory,
+        as: 'subCategories',
+        attributes: [],
+        include: [
+          {
+            model: Product,
+            as: 'products',
+            attributes: []
+          }
+        ]
+      }
+    ],
+    group: ['Category.id']
+  });
+}
+
+  
+
 
   // Update category
   async updateCategory(id, data) {
