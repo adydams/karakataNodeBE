@@ -2,6 +2,7 @@ const Product = require("../models/productModel");
 const ProductImage = require("../models/imageModel"); // <-- add this
 const Brand = require("../models/brandModel"); // <-- add this
 const SubCategory  = require("../models/subCategoryModel"); // <-- add this
+const Category  = require("../models/categoryModel");
 const Store  = require("../models/storeModel"); // <-- add this
 
 const QRCode = require("qrcode");
@@ -92,6 +93,7 @@ class ProductServices {
       include: [
       { model: Brand, as: "brand", required: false },       // nullable
       { model: SubCategory, as: "subcategory", required: false }, 
+      { model: Category, as: "category", required: false },       
       { model: Store, as: "store", required: false },       // nullable
       { model: ProductImage, as: "images", required: false } // optional
     ]
