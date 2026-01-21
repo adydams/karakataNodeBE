@@ -28,7 +28,7 @@ const { auth } = require("../middlewares/auth");
  *             properties:
  *               shippingAddressId:
  *                 type: uuid
- *                 example: "123 Main St, Lagos"
+ *                 example: "a1b2c3d4-e5f6-7g8h-9i10-jk11lm12no13"
  *               phone:
  *                 type: string
  *                 example: "+2348012345678"

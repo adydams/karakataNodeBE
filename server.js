@@ -28,10 +28,11 @@ const nodeEnv = process.env.NODE_ENV || 'development';
     app.use('/api/products', productRoutes);
     app.use('/api/stores', storeRoutes);
     app.use('/api/admin', adminRoutes);
+    app.use('/api/addresses', require('./routes/addressRoutes'));
    // Run seed on startup (after DB sync)
   sequelize.sync({ 
-    alter: false 
-   // force: true
+    alter: false,
+    //force: true
   }).then(async () => {
     console.log("Database synced ✅");
     await seedRolesAndPermissions();

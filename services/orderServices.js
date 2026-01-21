@@ -38,7 +38,7 @@ class OrderServices {
 
     // 3. Initialize payment
     try {
-      const payment = await PaymentService.initializePayment({
+      const payment = await PaymentService.initialize({
         amount: totalAmount,
         email,
         gateway,
