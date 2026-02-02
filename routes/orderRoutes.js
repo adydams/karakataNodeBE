@@ -22,12 +22,13 @@ const { auth } = require("../middlewares/auth");
  *           schema:
  *             type: object
  *             required:
- *               - shippingAddress
+ *               - shippingAddressId
  *               - gateway
- *               - email
+ *               - phone
  *             properties:
  *               shippingAddressId:
- *                 type: uuid
+ *                 type: string
+ *                 format: uuid
  *                 example: "a1b2c3d4-e5f6-7g8h-9i10-jk11lm12no13"
  *               phone:
  *                 type: string
@@ -37,13 +38,14 @@ const { auth } = require("../middlewares/auth");
  *                 example: "Leave package at the gate"
  *               gateway:
  *                 type: string
- *                 example: "paystack"               
+ *                 enum: [paystack, flutterwave]
  *     responses:
  *       201:
  *         description: Order created and payment initialized
  *       400:
  *         description: Bad request
  */
+
 router.post("/checkout", auth, (req, res) => orderController.checkout(req, res));
 
 /**

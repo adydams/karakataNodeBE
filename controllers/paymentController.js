@@ -11,6 +11,9 @@ class PaymentController {
       const order = await Order.findByPk(orderId);
       const user = await User.findByPk(userId);
 
+      console.log("Initializing payment for order:", orderId, "by user:", userId);
+      console.log("Order:", order);
+      console.log("User:", user);
       if (!order) return res.status(404).json({ message: "Order not found" });
 
       const { paymentUrl, payment } = await PaymentService.initializePayment({

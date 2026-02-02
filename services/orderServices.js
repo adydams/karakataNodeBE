@@ -1,56 +1,97 @@
 const { use } = require("passport");
-const { sequelize, Order, OrderItem, Cart, CartItem, Product } = require("../models");
+const { sequelize, Order, OrderItem, Cart, CartItem, Product, User } = require("../models");
 const PaymentService = require("./paymentServices");
 
 class OrderServices {
   /**
    * Create an order (with items already provided or from cart).
    */
+  // async create(userId, { items, totalAmount, shippingAddressId, phone, notes, gateway, email }, transaction) {
+    
+
+  //   if (!shippingAddressId) {
+  //     throw new Error("Shipping address is required");
+  //   }
+  // // fetch user
+  // const user = await User.findByPk(userId, { transaction });
+  // if (!user) throw new Error("User not found");
+
+  // const order = await Order.create(
+  //   {
+  //     userId,
+  //     totalAmount,
+  //     shippingAddressId,
+  //     phone,
+  //     notes,
+  //     paymentGateway: gateway,
+  //     status: "PENDING",
+  //   },
+  //   { transaction }
+  // );
+
+  // for (const item of items) {
+  //   await OrderItem.create(
+  //     {
+  //       orderId: order.id,
+  //       productId: item.productId,
+  //       productName: item.productName,
+  //       price: item.unitPrice,
+  //       quantity: item.quantity,
+  //       subtotal: item.subtotal,
+  //     },
+  //     { transaction }
+  //   );
+  // }
+
+  // }
+
+
+
   async create(userId, { items, totalAmount, shippingAddressId, phone, notes, gateway, email }, transaction) {
-    // 1. Create order
-    const order = await Order.create(
+
+  if (!shippingAddressId) {
+    throw new Error("Shipping address is required");
+  }
+
+  const user = await User.findByPk(userId, { transaction });
+  if (!user) throw new Error("User not found");
+
+  const order = await Order.create(
+    {
+      userId,
+      totalAmount,
+      shippingAddressId,
+      phone,
+      notes,
+      paymentGateway: gateway,
+      status: "PENDING",
+    },
+    { transaction }
+  );
+
+  for (const item of items) {
+    await OrderItem.create(
       {
-        userId,
-        totalAmount,
-        shippingAddressId,
-        phone,
-        notes,
-        paymentGateway: gateway,
-        status: "PENDING",
+        orderId: order.id,
+        productId: item.productId,
+        productName: item.productName,
+        price: item.unitPrice,
+        quantity: item.quantity,
+        subtotal: item.subtotal,
       },
       { transaction }
     );
-
-    // 2. Add order items
-    for (const item of items) {
-      await OrderItem.create(
-        {
-          orderId: order.id,
-          productId: item.productId,
-          productName: item.productName,
-          price: item.unitPrice,
-          quantity: item.quantity,
-          subtotal: item.subtotal,
-        },
-        { transaction }
-      );
-    }
-
-    // 3. Initialize payment
-    try {
-      const payment = await PaymentService.initialize({
-        amount: totalAmount,
-        email,
-        gateway,
-      });
-
-      await order.update({ paymentReference: payment.reference }, { transaction });
-
-      return { order, paymentUrl: payment.paymentUrl };
-    } catch (err) {
-      throw new Error(`Payment initialization failed: ${err.message}`);
-    }
   }
+
+  // ⬇️ REQUIRED
+  return {
+    order,
+    paymentUrl: null, // replace when payment init is added
+  };
+}
+
+
+
 
   /**
    * Verify payment
@@ -73,7 +114,7 @@ class OrderServices {
   /**
    * Checkout → from cart
    */
-  async checkout(userId, { shippingAddress, phone, notes, gateway, email }) {
+  async checkout(userId, { shippingAddressId, phone, notes, gateway, email }) {
      
     const t = await sequelize.transaction();
     try {
@@ -112,10 +153,9 @@ class OrderServices {
           subtotal,
         };
       });
-
       const { order, paymentUrl } = await this.create(
         userId,
-        { items, totalAmount, shippingAddress, phone, notes, gateway, email },
+        { items, totalAmount, shippingAddressId, phone, notes, gateway, email },
         t
       );
 

@@ -20,17 +20,16 @@ class AuthServices {
   }
 
   // login local
-  async login({ email, password, bool: isAdminLogin
-
-    
-   }) { 
+  async login({ email, password, bool: isAdminLogin})
+   { 
     const user = await User.findOne({
     where: { email },
     include: [{ model: Role, as: 'role' }]
   });
-  const cart = await Cart.findOne({where: {userId:user.id} })
-    if (!user) throw new Error('Invalid credentials');
-    if (!cart) {
+  if (!user) throw new Error('Invalid credentials');
+   
+  let cart = await Cart.findOne({where: {userId:user.id} })
+     if (!cart) {
     cart = await Cart.create({ userId: user.id });
     }
     // user may be OAuth-only (no passwordHash)

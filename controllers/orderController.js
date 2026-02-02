@@ -7,11 +7,14 @@ class OrderController {
   async checkout(req, res) {
     try {
       const userId = req.user?.id ; // 👈 replace with real auth
-      const { shippingAddress, gateway, email } = req.body;
+      const { shippingAddressId, gateway, email } = req.body;
+      console.log("Checkout request body:", req.body);
       const { order, paymentUrl } = await OrderServices.checkout(userId, {
-        shippingAddress,
+        shippingAddressId,
         gateway,
         email,
+        phone: req.body.phone,
+        notes: req.body.notes,
       });
 
       return res.status(201).json({
@@ -52,5 +55,6 @@ class OrderController {
     }
   }
 }
+
 
 module.exports = new OrderController();
