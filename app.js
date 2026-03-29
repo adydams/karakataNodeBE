@@ -53,10 +53,10 @@ const swaggerOptions = {
           url: 'https://karakatanodebe.onrender.com',
           description: 'Production',
         },
-      {
-        url: process.env.BASE_URL || 'http://localhost:5000',
-        description: 'Development server',
-      },
+      // {
+      //   url: process.env.BASE_URL || 'http://localhost:5000',
+      //   description: 'Development server',
+      // },
     ],
     components: {
       securitySchemes: {
