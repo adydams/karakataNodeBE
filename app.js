@@ -38,7 +38,7 @@ const allowedOrigins = [
   "http://localhost:5173",      // local dev
   "http://localhost:5174",
   "https://karakatang.vercel.app" // production frontend
-];
+]; 
 // Swagger configuration
 const swaggerOptions = {
   definition: {

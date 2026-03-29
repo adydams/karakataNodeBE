@@ -1,6 +1,7 @@
 // services/paymentServices.js
 const axios = require('axios');
-const { Payment, Order, User, sequelize } = require('../models');
+
+const { sequelize , Order, Payment, User} = require('../models');
 
 class PaymentServices {
   // initialize payment for an order (creates Payment row with pending status)
@@ -78,7 +79,7 @@ class PaymentServices {
   if (!user) throw new Error('User required');
 
   gateway = gateway?.toLowerCase();
-
+ 
   const payment = await Payment.create({
     orderId: order.id,
     userId: user.id,
@@ -96,6 +97,7 @@ class PaymentServices {
       callback_url: `${redirectUrl}/api/payments/verify?gateway=paystack&orderId=${order.id}`
     };
 
+    
     const res = await axios.post(
       'https://api.paystack.co/transaction/initialize',
       payload,
