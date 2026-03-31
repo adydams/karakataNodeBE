@@ -49,14 +49,16 @@ const swaggerOptions = {
       description: 'API documentation for Karakata Node.js Backend',
     },
     servers: [
-       {
-          url: 'https://karakatanodebe.onrender.com',
-          description: 'Production',
-        },
-      // {
-      //   url: process.env.BASE_URL || 'http://localhost:5000',
-      //   description: 'Development server',
-      // },
+      //  {
+      //     url: 'https://karakatanodebe.onrender.com',
+      //     description: 'Production',
+      //   },
+        //always comment when deploying to render, otherwise it will cause CORS error
+
+      {
+        url: process.env.BASE_URL || 'http://localhost:5000',
+        description: 'Development server',
+      },
     ],
     components: {
       securitySchemes: {

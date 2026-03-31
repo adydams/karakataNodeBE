@@ -75,23 +75,23 @@ class PaymentServices {
   // }
 
   async initialize({ order, user, gateway, redirectUrl }) {
+    
   if (!order) throw new Error('Order required');
   if (!user) throw new Error('User required');
 
   gateway = gateway?.toLowerCase();
- 
   const payment = await Payment.create({
     orderId: order.id,
     userId: user.id,
     gateway,
     amount: order.totalAmount,
     currency: 'NGN',
-    status: 'pending'
+    status: 'PENDING'
   });
-
+  
   if (gateway === 'paystack') {
     const payload = {
-      email: user.email || 'no-reply@example.com',
+      email: user.email || 'adydams@gmail.com',
       amount: Math.round(order.totalAmount * 100),
       reference: `order_${order.id}_${Date.now()}`,
       callback_url: `${redirectUrl}/api/payments/verify?gateway=paystack&orderId=${order.id}`
@@ -111,6 +111,7 @@ class PaymentServices {
     if (!res.data?.status) throw new Error('Paystack init failed');
 
     payment.reference = res.data.data.reference;
+    payment.paymentUrl = res.data.data.authorization_url; 
     payment.rawResponse = res.data;
     await payment.save();
 
@@ -148,6 +149,7 @@ class PaymentServices {
     }
 
     payment.reference = tx_ref;
+    payment.paymentUrl = res.data.data.link; 
     payment.rawResponse = res.data;
     await payment.save();
 

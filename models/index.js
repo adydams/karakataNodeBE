@@ -150,5 +150,8 @@ module.exports = {
   CartItem,
   Order,
   OrderItem,
-  User
+  User,
+  Payment,
+  ShippingAddress,
+  Brand,  
 };

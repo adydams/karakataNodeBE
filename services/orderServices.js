@@ -5,8 +5,7 @@ const PaymentService = require("./paymentServices");
 class OrderServices {
   
 
-  async create(userId, { items, totalAmount, shippingAddressId, phone, notes, gateway, email }, transaction) {
-
+ async create(userId, { items, totalAmount, shippingAddressId, phone, notes, gateway }, transaction) {
   if (!shippingAddressId) {
     throw new Error("Shipping address is required");
   }
@@ -40,24 +39,9 @@ class OrderServices {
       { transaction }
     );
   }
-  // 4. Initialize payment (THIS WAS MISSING)
-  const { paymentUrl } = await PaymentService.initialize({
-    order,
-    user,
-    gateway,
-    redirectUrl: process.env.BASE_URL
-  });
 
-  // 5. RETURN BOTH (critical)
-  return {
-    order,
-    paymentUrl
-  };
- }
-
-
-
-
+  return order; // ✅ ONLY return order
+}
 
 
   /**
@@ -81,23 +65,17 @@ class OrderServices {
   /**
    * Checkout → from cart
    */
-  async checkout(userId, { shippingAddressId, phone, notes, gateway, email }) {
-     
+    async checkout(userId, { shippingAddressId, phone, notes, gateway, email }) {
     const t = await sequelize.transaction();
+
     try {
-      console.log("********* order service checkout", userId, shippingAddressId, phone, notes, gateway, email);
       const cart = await Cart.findOne({
-        where: { userId }, // filter by the userId column on Cart
+        where: { userId },
         include: [
           {
             model: CartItem,
             as: "items",
-            include: [
-              {
-                model: Product,
-                as: "product",
-              },
-            ],
+            include: [{ model: Product, as: "product" }],
           },
         ],
         transaction: t,
@@ -107,8 +85,7 @@ class OrderServices {
       if (!cart || cart.items.length === 0) {
         throw new Error("Cart is empty");
       }
-      console.log("********* order service");
-     
+
       let totalAmount = 0;
       const items = cart.items.map((item) => {
         const subtotal = item.quantity * item.product.price;
@@ -121,16 +98,40 @@ class OrderServices {
           subtotal,
         };
       });
-      const { order, paymentUrl } = await this.create(
+
+      // ✅ 1. Create order inside transaction
+      const order = await this.create(
         userId,
-        { items, totalAmount, shippingAddressId, phone, notes, gateway, email },
+        { items, totalAmount, shippingAddressId, phone, notes, gateway },
         t
       );
 
       await CartItem.destroy({ where: { cartId: cart.id }, transaction: t });
 
+      // ✅ 2. COMMIT FIRST
       await t.commit();
-      return { order, paymentUrl };
+
+      // ✅ 3. Fetch user (outside transaction)
+      const user = await User.findByPk(userId);
+
+      // ✅ 4. Initialize payment (outside transaction)
+      const paymentInit = await PaymentService.initialize({
+        order,
+        user,
+        gateway,
+        redirectUrl: process.env.BASE_URL,
+      });
+
+      // ✅ 5. Update order with reference
+      await order.update({
+        paymentReference: paymentInit.payment.reference,
+      });
+
+      return {
+        order,
+        paymentUrl: paymentInit.paymentUrl,
+      };
+
     } catch (err) {
       await t.rollback();
       throw err;

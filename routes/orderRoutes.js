@@ -25,6 +25,7 @@ const { auth } = require("../middlewares/auth");
  *               - shippingAddressId
  *               - gateway
  *               - phone
+ *               - email
  *             properties:
  *               shippingAddressId:
  *                 type: string
@@ -33,6 +34,10 @@ const { auth } = require("../middlewares/auth");
  *               phone:
  *                 type: string
  *                 example: "+2348012345678"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
  *               notes:
  *                 type: string
  *                 example: "Leave package at the gate"
