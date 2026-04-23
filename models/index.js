@@ -45,7 +45,7 @@ Object.entries(models).forEach(([name, model]) => {
   if (!model || typeof model.hasMany !== 'function') {
     throw new Error(`${name} is not a valid Sequelize model. Check the export in ${name.toLowerCase()}Model.js`);
   }
-  console.log(`✓ ${name} model loaded successfully`);
+  //console.log(`✓ ${name} model loaded successfully`);
 });
 
 // ================= ASSOCIATIONS =================
@@ -132,7 +132,7 @@ try {
   Role.hasMany(User, { foreignKey: "roleId", as: "users" });
   User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
 
-  console.log('✓ All model associations created successfully');
+  //console.log('✓ All model associations created successfully');
 
 } catch (error) {
   console.error('Error creating model associations:', error);

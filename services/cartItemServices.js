@@ -62,7 +62,7 @@ async addItemToCart (cartId, productId, quantity = 1) {
   );
 
   if (!updated) {
-    console.log('No record updated — invalid ID or already deleted.');
+    //console.log('No record updated — invalid ID or already deleted.');
     return null;
   }
 

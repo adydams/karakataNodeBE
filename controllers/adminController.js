@@ -65,8 +65,8 @@ exports.getAllAdmins = async (req, res) => {
       page = 1,
       limit = 10,
     } = req.query;
-     console.log("req.query.limit")
-    console.log(req.query.limit)
+     //console.log("req.query.limit")
+    //console.log(req.query.limit)
     const offset = (page - 1) * limit;
 
     // Build filters dynamically
@@ -122,8 +122,8 @@ exports.Adminlogin = async (req, res) => {
 
 exports.onboardAdmin = async (req, res) => {
   try {
-    console.log("req.user.roleName")
-    console.log(req.user.role)
+    //console.log("req.user.roleName")
+    //console.log(req.user.role)
     // ✅ Check SuperAdmin permission based on role name
     if (!req.user || req.user.role !== "SuperAdmin") {
       return res.status(403).json({

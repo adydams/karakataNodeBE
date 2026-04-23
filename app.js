@@ -176,7 +176,7 @@ app.post("/api/payments/webhook", express.raw({ type: "*/*" }), (req, res) => {
 
     // Handle Paystack Webhook
     if (req.headers["x-paystack-signature"]) {
-      console.log("Paystack Webhook:", event);
+      //console.log("Paystack Webhook:", event);
       // TODO: Verify with crypto and update order status
       return res.status(200).send("Webhook received");
     }

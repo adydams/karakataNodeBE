@@ -58,12 +58,12 @@
 //         roleId: superAdminRole.id, // ✅ Use GUID role ID
 //       });
 
-//       console.log("✅ SuperAdmin user created: superadmin@example.com / Super@123");
+//       //console.log("✅ SuperAdmin user created: superadmin@example.com / Super@123");
 //     } else { 
-//       console.log("ℹ️ SuperAdmin already exists");
+//       //console.log("ℹ️ SuperAdmin already exists");
 //     }
 
-//     console.log("✅ Roles, permissions, and SuperAdmin seeded successfully!");
+//     //console.log("✅ Roles, permissions, and SuperAdmin seeded successfully!");
 //   } catch (err) {
 //     console.error("❌ Seeding failed:", err);
 //   }
@@ -123,9 +123,9 @@ const seedRolesAndPermissions = async () => {
     const currentPerms = await superAdminRole.getPermissions();
     if (currentPerms.length !== allPermissions.length) {
       await superAdminRole.setPermissions(allPermissions);
-      console.log("🔗 Permissions assigned to SuperAdmin role.");
+      //console.log("🔗 Permissions assigned to SuperAdmin role.");
     } else {
-      console.log("ℹ️ SuperAdmin already has all permissions.");
+      //console.log("ℹ️ SuperAdmin already has all permissions.");
     }
 
     // 4️⃣ Create or find SuperAdmin user
@@ -142,12 +142,12 @@ const seedRolesAndPermissions = async () => {
     });
 
     if (created) {
-      console.log("✅ SuperAdmin user created: superadmin@karakata.com / Super@123");
+      //console.log("✅ SuperAdmin user created: superadmin@karakata.com / Super@123");
     } else {
-      console.log("ℹ️ SuperAdmin user already exists.");
+      //console.log("ℹ️ SuperAdmin user already exists.");
     }
 
-    console.log("✅ Roles, permissions, and SuperAdmin seeded successfully!");
+    //console.log("✅ Roles, permissions, and SuperAdmin seeded successfully!");
   } catch (err) {
     console.error("❌ Seeding failed:", err);
   }

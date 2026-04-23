@@ -59,7 +59,7 @@ class CartItemController {
   async getCartItems(req, res) {
     try {
     const { cartId } = req.params;
-    console.log(`getCartItems ${cartId}`);
+    //console.log(`getCartItems ${cartId}`);
     const cart = await cartItemService.getCartItems(cartId);
 
     if (!cart) {

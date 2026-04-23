@@ -22,9 +22,9 @@ class AddressController {
 
   async getAll(req, res) {
     const userId = req.user.id;
-    console.log("Fetching addresses for user:", userId);
+    //console.log("Fetching addresses for user:", userId);
     const addresses = await AddressService.getAddressesByUser(userId);
-    console.log("Addresses found:", addresses);  
+    //console.log("Addresses found:", addresses);  
     return res.status(200).json({
       success: true,
       addresses,

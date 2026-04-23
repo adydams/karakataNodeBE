@@ -1,5 +1,5 @@
 const { use } = require("passport");
-const { sequelize, Order, OrderItem, Cart, CartItem, Product, User } = require("../models");
+const { sequelize, Order, OrderItem, Cart, CartItem, Product, User, Payment } = require("../models");
 const PaymentService = require("./paymentServices");
 
 class OrderServices {
@@ -25,7 +25,8 @@ class OrderServices {
     },
     { transaction }
   );
-
+   //console.log("✅ Order created:", order.id);
+  //console.log("💰 Total:", totalAmount); 
   for (const item of items) {
     await OrderItem.create(
       {
@@ -137,6 +138,39 @@ class OrderServices {
       throw err;
     }
   }
+
+  async getInvoice(orderId, userId) {
+  //console.log("🧾 Service: Fetching invoice for:", orderId);
+  //console.log("👤 Service User:", userId);
+
+  const order = await Order.findByPk(orderId, {
+    include: [
+      { model: OrderItem, as: 'items' },
+      { model: Payment, as: 'payment' }
+    ]
+  });
+
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  // 🔒 Authorization check (VERY IMPORTANT)
+  if (order.userId !== userId) {
+    throw new Error("Unauthorized access to this order");
+  }
+
+  return {
+  order: {
+    id: order.id,
+    totalAmount: order.totalAmount,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    createdAt: order.createdAt
+  },
+  items: order.items,
+  payment: order.payment
+};
+}
 }
 
 module.exports = new OrderServices();

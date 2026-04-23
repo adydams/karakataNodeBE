@@ -8,7 +8,9 @@ class OrderController {
     try {
       const userId = req.user?.id ; // 👈 replace with real auth
       const { shippingAddressId, gateway, email } = req.body;
-      console.log("Checkout request body:", req.body);
+      //console.log("🟢 CHECKOUT START");
+      //console.log("User:", userId);
+      //console.log("Payload:", req.body);
       const { order, paymentUrl } = await OrderServices.checkout(userId, {
         shippingAddressId,
         gateway,
@@ -54,7 +56,30 @@ class OrderController {
       });
     }
   }
+
+
+async getInvoice(req, res) {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.id;
+
+    //console.log("🧾 Controller hit:", orderId);
+
+    const order = await OrderServices.getInvoice(orderId, userId);
+
+    res.json({
+      success: true,
+      data: order
+    });
+
+  } catch (err) {
+    console.error("❌ Invoice error:", err.message);
+
+    res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
 }
-
-
+}
 module.exports = new OrderController();

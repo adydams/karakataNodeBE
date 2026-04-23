@@ -17,10 +17,10 @@ const nodeEnv = process.env.NODE_ENV || 'development';
 (async () => {
   try {
     await sequelize.authenticate();
-    console.log('✓ Database connection established successfully.');
+    //console.log('✓ Database connection established successfully.');
 
     await sequelize.sync({ alter: false });
-    console.log('✓ Database synchronized.');
+    //console.log('✓ Database synchronized.');
 
     // Register routes
     app.use('/api/categories', categoryRoutes);
@@ -34,7 +34,7 @@ const nodeEnv = process.env.NODE_ENV || 'development';
     alter: false,
     //force: true
   }).then(async () => {
-    console.log("Database synced ✅");
+    //console.log("Database synced ✅");
     await seedRolesAndPermissions();
   });
 
@@ -42,14 +42,14 @@ const nodeEnv = process.env.NODE_ENV || 'development';
 
     // Start server
     app.listen(port, () => {
-      console.log(`🚀 App running on port ${port}...`);
-      console.log(`📊 Environment: ${nodeEnv}`);
-      console.log(`🌐 Server URL: http://localhost:${port}`);
+      //console.log(`🚀 App running on port ${port}...`);
+      //console.log(`📊 Environment: ${nodeEnv}`);
+      //console.log(`🌐 Server URL: http://localhost:${port}`);
 
       if (nodeEnv === 'production') {
-        console.log(`🔒 Running in production mode`);
+        //console.log(`🔒 Running in production mode`);
       } else {
-        console.log(`🔧 Running in development mode`);
+        //console.log(`🔧 Running in development mode`);
       }
     });
 
