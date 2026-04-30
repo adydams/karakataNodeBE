@@ -120,7 +120,7 @@ class OrderServices {
         order,
         user,
         gateway,
-        redirectUrl: process.env.BASE_URL,
+        redirectUrl: process.env.BACKEND_BASE_URL,
       });
 
       // ✅ 5. Update order with reference

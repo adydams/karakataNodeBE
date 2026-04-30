@@ -33,7 +33,7 @@ class PaymentServices {
 
     
     const res = await axios.post(
-      'https://api.paystack.co/transaction/initialize',
+       `${PAYSTACK_URL}/transaction/initialize`,
       payload,
       {
         headers: {
@@ -59,7 +59,7 @@ class PaymentServices {
     const tx_ref = `order_${order.id}_${Date.now()}`;
 
     const res = await axios.post(
-      'https://api.flutterwave.com/v3/payments',
+      `${FLUTTERWAVE_URL}/v3/payments`,
       {
         tx_ref,
         amount: order.totalAmount,
