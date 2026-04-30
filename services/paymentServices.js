@@ -33,7 +33,7 @@ class PaymentServices {
 
     
     const res = await axios.post(
-       `${PAYSTACK_URL}/transaction/initialize`,
+       `${process.env.PAYSTACK_URL}/transaction/initialize`,
       payload,
       {
         headers: {
@@ -59,7 +59,7 @@ class PaymentServices {
     const tx_ref = `order_${order.id}_${Date.now()}`;
 
     const res = await axios.post(
-      `${FLUTTERWAVE_URL}/v3/payments`,
+      `${process.env.FLUTTERWAVE_URL}/v3/payments`,
       {
         tx_ref,
         amount: order.totalAmount,
@@ -102,7 +102,7 @@ class PaymentServices {
   // verify by calling gateway API (used by manual verify endpoint)
   async verify({ gateway, reference }) {
     if (gateway === 'paystack') {
-      const res = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+      const res = await axios.get(`${process.env.PAYSTACK_URL}/transaction/verify/${reference}`, {
         headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` }
       });
       //console.log("Paystack verify response endpoint:", res.data);
@@ -111,7 +111,7 @@ class PaymentServices {
     }
 
     if (gateway === 'flutterwave') {
-      const res = await axios.get(`https://api.flutterwave.com/v3/transactions/${reference}/verify`, {
+      const res = await axios.get(`${process.env.FLUTTERWAVE_URL}/v3/transactions/${reference}/verify`, {
         headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` }
       });
       const success = res.data && res.data.data && res.data.data.status === 'successful';

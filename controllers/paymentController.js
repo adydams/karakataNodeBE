@@ -70,13 +70,13 @@ class PaymentController {
     //console.log("➡️ Redirecting to frontend with order:", order.id);
     // ✅ REDIRECT USER TO FRONTEND INVOICE PAGE
     return res.redirect(
-      `https://karakatang.vercel.app/payment-success?orderId=${order.id}`
+      `${process.env.FRONTEND_URL}/payment-success?orderId=${order.id}`
     );
 
   } catch (err) {
     console.error(err);
     return res.redirect(
-      `https://karakatang.vercel.app/payment-failed`
+      `${process.env.FRONTEND_URL}/payment-failed`
     );
   }
 }
