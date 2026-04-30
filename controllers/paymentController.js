@@ -16,8 +16,11 @@ class PaymentController {
       //console.log("User:", user);
       if (!order) return res.status(404).json({ message: "Order not found" });
 
-      const { paymentUrl, payment } = await PaymentService.initializePayment({
-        order, user, gateway
+      const { paymentUrl, payment } = await PaymentService.initialize({
+        order,
+        user,
+        gateway,   
+        redirectUrl: process.env.BACKEND_URL  
       });
 
       res.status(200).json({ paymentUrl, payment });
