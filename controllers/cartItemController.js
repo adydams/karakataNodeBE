@@ -87,7 +87,7 @@ async removeItem  (req, res)  {
     const { cartId, productId } = req.params;
     const { quantity } = req.body; // optional, defaults to 1
 
-    const item = await cartService.removeItem(cartId, productId, quantity || 1);
+    const item = await cartItemService.removeItem(cartId, productId, quantity || 1);
 
     if (!item) {
       return res.status(200).json({
