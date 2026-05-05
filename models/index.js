@@ -108,13 +108,13 @@ try {
   Store.hasMany(Product, { as: "products", foreignKey: "storeId" });
   Product.belongsTo(Store, { as: "store", foreignKey: "storeId" });
 
-   Payment.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
-   Order.hasOne(models.Payment, { foreignKey: "orderId", as: "payment" });
-    Payment.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
+  Payment.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+  Order.hasOne(models.Payment, { foreignKey: "orderId", as: "payment" });
+  Payment.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
 
-    Order.hasOne(models.ShippingAddress, { foreignKey: "orderId", as: "shippingAddress" });
-    ShippingAddress.belongsTo(models.Order, { foreignKey: "orderId", as: "order",  onDelete: 'SET NULL', });
-    ShippingAddress.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+  Order.hasOne(models.ShippingAddress, { foreignKey: "orderId", as: "shippingAddress" });
+  ShippingAddress.belongsTo(models.Order, { foreignKey: "orderId", as: "order",  onDelete: 'SET NULL', });
+  ShippingAddress.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
    
     Role.belongsToMany(Permission, {
       through: "RolePermissions",

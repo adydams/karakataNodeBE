@@ -140,36 +140,71 @@ class OrderServices {
   }
 
   async getInvoice(orderId, userId) {
-  //console.log("🧾 Service: Fetching invoice for:", orderId);
-  //console.log("👤 Service User:", userId);
-
   const order = await Order.findByPk(orderId, {
+    attributes: ["id", "userId", "totalAmount", "status", "paymentStatus", "createdAt"],
     include: [
-      { model: OrderItem, as: 'items' },
-      { model: Payment, as: 'payment' }
+      {
+        model: OrderItem,
+        as: "items",
+        attributes: ["id", "quantity", "price"],
+        include: [
+          {
+            model: Product,
+            as: "product",
+            attributes: ["id", "name"],
+            include: [
+              {
+                model: ProductImage,
+                as: "images",
+                attributes: ["url"]
+                // optional: limit: 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        model: Payment,
+        as: "payment",
+        attributes: ["id", "amount", "status", "paymentMethod"]
+      }
     ]
   });
 
+  // ❌ Order not found
   if (!order) {
     throw new Error("Order not found");
   }
 
-  // 🔒 Authorization check (VERY IMPORTANT)
+  // 🔒 Authorization check
   if (order.userId !== userId) {
     throw new Error("Unauthorized access to this order");
   }
 
+  // ✅ Clean response
   return {
-  order: {
-    id: order.id,
-    totalAmount: order.totalAmount,
-    status: order.status,
-    paymentStatus: order.paymentStatus,
-    createdAt: order.createdAt
-  },
-  items: order.items,
-  payment: order.payment
-};
+    order: {
+      id: order.id,
+      totalAmount: order.totalAmount,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt
+    },
+
+    items: order.items.map(item => ({
+      id: item.id,
+      quantity: item.quantity,
+      price: item.price,
+
+      product: {
+        id: item.product?.id,
+        name: item.product?.name,
+        image: item.product?.images?.[0]?.url || null
+      }
+    })),
+
+    payment: order.payment
+  };
 }
 }
 
