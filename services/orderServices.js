@@ -1,5 +1,5 @@
 const { use } = require("passport");
-const { sequelize, Order, OrderItem, Cart, CartItem, Product, User, Payment } = require("../models");
+const { sequelize, Order, OrderItem, Cart, CartItem, Product, User, Payment, ProductImage } = require("../models");
 const PaymentService = require("./paymentServices");
 
 class OrderServices {
