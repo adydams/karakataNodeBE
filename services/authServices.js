@@ -22,6 +22,7 @@ class AuthServices {
   // login local
   async login({ email, password, bool: isAdminLogin})
    { 
+    console.log("Login attempt service:", { email, password: password ? "****" : null, isAdminLogin });
     const user = await User.findOne({
     where: { email },
     include: [{ model: Role, as: 'role' }]

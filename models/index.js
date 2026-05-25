@@ -18,9 +18,12 @@ const Brand = require("./brandModel");
 const SubCategory = require("./subCategoryModel");
 const Store = require("./storeModel");
 const Payment = require("./paymentModel");
-const ShippingAddress = require("./shippingAddressModel");
+//const ShippingAddress = require("./shippingAddressModel");
 const Role = require("./roleModel");
 const Permission = require("./permissionModel");
+const Address = require("./AddressModel");
+const StorePickupStation = require("./StorePickupStation");
+
 
 // Validate that all imports are proper Sequelize models
 const models = {
@@ -34,10 +37,14 @@ const models = {
   OrderItem,
   User,
   Payment,
-  ShippingAddress,
+ // ShippingAddress,
   Brand,
   SubCategory,
   Store,
+  Address,
+  StorePickupStation,
+  Role,
+  Permission,
 };
 
 // Check each model
@@ -108,14 +115,41 @@ try {
   Store.hasMany(Product, { as: "products", foreignKey: "storeId" });
   Product.belongsTo(Store, { as: "store", foreignKey: "storeId" });
 
+  Store.hasMany(StorePickupStation, {
+    foreignKey: "storeId",
+    as: "pickupStations",
+  });
+
+  StorePickupStation.belongsTo(Store, {
+    foreignKey: "storeId",
+    as: "store",
+  });
+
+  StorePickupStation.hasMany(Product, {
+    foreignKey: "pickupStationId",
+    as: "products",
+  });
+
+  Product.belongsTo(StorePickupStation, {
+    foreignKey: "pickupStationId",
+    as: "pickupStation",
+  });
+
   Payment.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
   Order.hasOne(models.Payment, { foreignKey: "orderId", as: "payment" });
   Payment.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
 
-  Order.hasOne(models.ShippingAddress, { foreignKey: "orderId", as: "shippingAddress" });
-  ShippingAddress.belongsTo(models.Order, { foreignKey: "orderId", as: "order",  onDelete: 'SET NULL', });
-  ShippingAddress.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+  // Order.hasOne(models.ShippingAddress, { foreignKey: "orderId", as: "shippingAddress" });
+  // ShippingAddress.belongsTo(models.Order, { foreignKey: "orderId", as: "order",  onDelete: 'SET NULL', });
+  // ShippingAddress.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
    
+
+  User.hasMany(Address, { foreignKey: "userId", as: "addresses" });
+    Address.belongsTo(User, { foreignKey: "userId", as: "user" });
+   
+    Address.hasMany(Order, { foreignKey: "shippingAddressId", as: "orders" });
+
+Order.belongsTo(Address, { foreignKey: "shippingAddressId", as: "shippingAddress" });
     Role.belongsToMany(Permission, {
       through: "RolePermissions",
       foreignKey: "roleId",
@@ -152,6 +186,8 @@ module.exports = {
   OrderItem,
   User,
   Payment,
-  ShippingAddress,
+  // ShippingAddress,
   Brand,  
+  Address,
+  StorePickupStation
 };

@@ -1,7 +1,3 @@
-// 
-
-// app.js
-//const path = require('path');
 const express = require('express');
 const morgan = require('morgan');
 const helmet = require('helmet');
@@ -13,9 +9,7 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const { xss } = require('express-xss-sanitizer');
 
 require("dotenv").config();
- // Debug logs
 
-// const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const brandRoutes = require('./routes/brandRoutes');
 const cartRoutes = require('./routes/cartRoutes');
@@ -29,17 +23,165 @@ const favoriteRoutes = require('./routes/favoriteRoutes');
 const productRoutes = require('./routes/productRoutes');
 const subCategoryRoutes = require('./routes/subCategoryRoutes');
 const cartItemRoutes = require('./routes/cartItemRoutes');
-const shippingRoutes = require('./routes/shippingRoutes');
-const deliveryRoutes = require('./routes/deliveryRoutes');
+//const shippingRoutes = require('./routes/shippingRoutes');
 const adminPermissionRoutes = require('./routes/adminPermissionRoutes');
 const addressesRoutes = require('./routes/addressRoutes');
+const logisticsRoutes = require('./routes/logisticsRoutes');
+
 const app = express();
+
 const allowedOrigins = [
-  "http://localhost:5173",      // local dev
+  "http://localhost:5000", 
+  "http://localhost:5173",
   "http://localhost:5174",
-  "https://karakatang.vercel.app" // production frontend
-]; 
-// Swagger configuration
+  "https://karakatang.vercel.app"
+];
+
+// app.get('/ping', (req, res) => {
+//   res.json({ status: 'ok' });
+// });
+
+// ============================================
+// GLOBAL REQUEST LOGGER
+// ============================================
+
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  console.log("\n==================================");
+  console.log("📥 Incoming Request");
+  console.log("Method:", req.method);
+  console.log("URL:", req.originalUrl);
+  console.log("IP:", req.ip);
+  console.log("Time:", new Date().toISOString());
+
+  // request timeout detector
+  const timeout = setTimeout(() => {
+    console.log(`⏰ Request taking too long: ${req.method} ${req.originalUrl}`);
+  }, 10000);
+
+  res.on("finish", () => {
+    clearTimeout(timeout);
+
+    const duration = Date.now() - start;
+
+    console.log(
+      `✅ ${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`
+    );
+    console.log("==================================\n");
+  });
+
+  res.on("close", () => {
+    console.log(`❌ Connection closed for ${req.originalUrl}`);
+  });
+
+  next();
+});
+
+
+// ============================================
+// SECURITY
+// ============================================
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: false,
+  })
+);
+
+
+// ============================================
+// MORGAN LOGGER
+// ============================================
+
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
+
+
+// ============================================
+// CORS
+// ============================================
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
+
+
+// ============================================
+// XSS
+// ============================================
+
+app.use(xss());
+
+
+// ============================================
+// WEBHOOK ROUTE
+// MUST COME BEFORE express.json()
+// ============================================
+
+app.post(
+  "/api/payments/webhook",
+  express.raw({ type: "*/*" }),
+  (req, res) => {
+    try {
+      console.log("📦 Webhook Hit");
+
+      if (req.headers["verif-hash"] === process.env.FLW_SECRET_HASH) {
+        console.log("Flutterwave webhook received");
+        return res.status(200).send("Webhook received");
+      }
+
+      if (req.headers["x-paystack-signature"]) {
+        console.log("Paystack webhook received");
+        return res.status(200).send("Webhook received");
+      }
+
+      return res.status(400).send("Invalid webhook");
+
+    } catch (err) {
+      console.error("Webhook Error:", err);
+
+      return res.status(500).send("Webhook Error");
+    }
+  }
+);
+
+
+// ============================================
+// BODY PARSERS
+// ============================================
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+
+// ============================================
+// OTHER MIDDLEWARE
+// ============================================
+
+app.use(cookieParser());
+app.use(compression());
+
+
+// ============================================
+// REQUEST TIMESTAMP
+// ============================================
+
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString();
+  next();
+});
+
+
+// ============================================
+// SWAGGER
+// ============================================
+
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -49,150 +191,78 @@ const swaggerOptions = {
       description: 'API documentation for Karakata Node.js Backend',
     },
     servers: [
-      //  {
-      //     url: 'https://karakatanodebe.onrender.com',
-      //     description: 'Production',
-      //   },
-        //always comment when deploying to render, otherwise it will cause CORS error
-
       {
         url: process.env.BASE_URL || 'http://localhost:5000',
         description: 'Development server',
       },
     ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT', // optional, just to document the format
-        },
-      },
-    },
-    security: [
-      {
-        bearerAuth: [],
-      },
-    ],
   },
-  apis: ['./routes/*.js', './app.js'], // Path to the API files
+  apis: ['./routes/*.js', './app.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
-
-// View Engine
-app.set('view engine', 'pug');
-
-// Security headers
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-    contentSecurityPolicy: false,
-  })
-);
-
-// Logging
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
-
-
-
-app.use(
-  cors({
-    origin: "*",
-  })
-);
-
-// app.use(
-//   cors({
-//     origin: function (origin, callback) {
-//       if (!origin || allowedOrigins.includes(origin)) {
-//         callback(null, true);
-//       } else {
-//         callback(new Error("Not allowed by CORS"));
-//       }
-//     },
-//     credentials: true, // if you use cookies/sessions
-//   })
-// );
-// Enable CORS
-// app.use(
-//   cors({
-//     origin: process.env.BASE_URL || '*',
-//     credentials: true,
-//   })
-// );
-
-// XSS sanitize
-app.use(xss());
-
-// Body parser
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(cookieParser());
-
-// Compression
-app.use(compression());
-
-// Request timestamp
-app.use((req, res, next) => {
-  req.requestTime = new Date().toISOString();
-  next();
-});
-
-// Swagger docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/brands', brandRoutes);
-app.use('/api/carts', cartRoutes);
-app.use('/api/cart-items', cartItemRoutes);
-app.use('/api/category', categoryRoutes);
-app.use('/api/favorite', favoriteRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/stores', storeRoutes);
-app.use('/api/subcategories', subCategoryRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/shipping', shippingRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/permission', adminPermissionRoutes);
-app.use('/api/addresses', addressesRoutes);
-// Webhook for payments (Paystack + Flutterwave)
-app.post("/api/payments/webhook", express.raw({ type: "*/*" }), (req, res) => {
-  try {
-    const event = req.body;
 
-    // Handle Flutterwave Webhook
-    if (req.headers["verif-hash"] === process.env.FLW_SECRET_HASH) {
-      // TODO: Update order paymentStatus here
-      return res.status(200).send("Webhook received");
-    }
+// ============================================
+// ROUTE DEBUG LOGGER
+// THIS SHOWS WHETHER REQUEST ENTERED ROUTER
+// ============================================
 
-    // Handle Paystack Webhook
-    if (req.headers["x-paystack-signature"]) {
-      //console.log("Paystack Webhook:", event);
-      // TODO: Verify with crypto and update order status
-      return res.status(200).send("Webhook received");
-    }
+const routeLogger = (routeName) => (req, res, next) => {
+  console.log(`➡️ Entered Route: ${routeName}`);
+  next();
+};
 
-    return res.status(400).send("Invalid webhook");
-  } catch (err) {
-    console.error("Webhook Error:", err);
-    res.status(500).send("Webhook Error");
-  }
+
+// ============================================
+// ROUTES
+// ============================================
+
+app.use('/api/auth', routeLogger('AUTH'), authRoutes);
+app.use('/api/brands', routeLogger('BRANDS'), brandRoutes);
+app.use('/api/carts', routeLogger('CARTS'), cartRoutes);
+app.use('/api/cart-items', routeLogger('CART ITEMS'), cartItemRoutes);
+app.use('/api/category', routeLogger('CATEGORY'), categoryRoutes);
+app.use('/api/favorite', routeLogger('FAVORITE'), favoriteRoutes);
+app.use('/api/orders', routeLogger('ORDERS'), orderRoutes);
+app.use('/api/payments', routeLogger('PAYMENTS'), paymentRoutes);
+app.use('/api/products', routeLogger('PRODUCTS'), productRoutes);
+app.use('/api/reviews', routeLogger('REVIEWS'), reviewRoutes);
+app.use('/api/stores', routeLogger('STORES'), storeRoutes);
+app.use('/api/subcategories', routeLogger('SUBCATEGORIES'), subCategoryRoutes);
+app.use('/api/users', routeLogger('USERS'), userRoutes);
+//app.use('/api/shipping', routeLogger('SHIPPING'), shippingRoutes);
+app.use('/api/permission', routeLogger('PERMISSION'), adminPermissionRoutes);
+app.use('/api/addresses', routeLogger('ADDRESSES'), addressesRoutes);
+app.use('/api/logistics', routeLogger('LOGISTICS'), logisticsRoutes);
+
+
+// ============================================
+// 404 HANDLER
+// ============================================
+
+app.all('*path', (req, res) => {
+  console.log("❌ Route Not Found");
+
+  res.status(404).json({
+    success: false,
+    message: `Cannot find ${req.originalUrl}`,
+  });
 });
 
-// Fallback route
-// app.all('*', (req, res) => {
-//   res.status(404).json({ status: 'fail', message: `Can't find ${req.originalUrl} on this server!` });
-// });
 
+// ============================================
+// GLOBAL ERROR HANDLER
+// ============================================
 
+app.use((err, req, res, next) => {
+  console.error("🔥 GLOBAL ERROR:", err);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+});
 
 module.exports = app;

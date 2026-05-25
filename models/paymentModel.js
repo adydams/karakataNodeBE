@@ -47,6 +47,8 @@ const Payment = sequelize.define(
       type: DataTypes.JSON,
       allowNull: true,
     },
+    
+  isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
   {
     tableName: "payments",

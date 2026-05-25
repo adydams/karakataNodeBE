@@ -42,6 +42,8 @@ const Store = sequelize.define(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    
+  isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
   {
     tableName: "stores",

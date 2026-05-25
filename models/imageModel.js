@@ -22,6 +22,10 @@ const ProductImage = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    isDeleted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
   {
     tableName: "product_images", // ✅ consistent naming

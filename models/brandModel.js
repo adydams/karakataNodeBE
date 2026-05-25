@@ -30,6 +30,10 @@ const Brand = sequelize.define(
       allowNull: false,
       defaultValue: DataTypes.NOW, // also default to now
     },
+    isDeleted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
   {
     tableName: "brands",

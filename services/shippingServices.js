@@ -1,53 +1,52 @@
-const { ShippingAddress } = require('../models');
+// const { ShippingAddress } = require('../models');
 
-class ShippingService {
-  async create(data) {
-    
-  // // 1. Check if order exists and belongs to the user
-  // const order = await Order.findOne({ _id: orderId, userId });
-  // if (!order) {
-  //   throw new Error("Invalid orderId or order does not belong to user");
-  // }
+// class ShippingService {
+//   async createShippingAddress(data) {
+//     const {
+//       userId,
+//       addressLine1,
+//       city,
+//       state,
+//       postalCode,
+//       country,
+//       addressLine2,
+//     } = data;
 
-  // // 2. Ensure payment is verified before saving address
-  // if (order.status !== "PAID") {
-  //   throw new Error("Cannot save address. Order payment not verified.");
-  // }
-      // 3. Save address
-  const address = await ShippingAddress.create({
-    userId,
-    addressLine1,
-    addressLine2,
-    city,
-    state,
-    postalCode,
-    country,
-  });
+//     const payload = {
+//       userId,
+//       addressLine1,
+//       city,
+//       state,
+//       postalCode,
+//       country,
+//       addressLine2: addressLine2 || null,
+//     };
 
-  return address;
-}
-  
+//     const address = await ShippingAddress.create(payload);
 
-  async listByUser(userId) {
-    return ShippingAddress.findAll({ where: { userId } });
-  }
+//     return address;
+//   }
 
-  async getById(id) {
-    return ShippingAddress.findByPk(id);
-  }
+//   async listShippingAddresses(userId) {
+//     return ShippingAddress.findAll({ where: { userId } });
+//   }
 
-  async update(id, data) {
-    const address = await ShippingAddress.findByPk(id);
-    if (!address) return null;
-    return address.update(data);
-  }
+//   async getShippingAddressById(id) {
+//     return ShippingAddress.findByPk(id);
+//   }
 
-  async remove(id) {
-    const address = await ShippingAddress.findByPk(id);
-    if (!address) return null;
-    await address.destroy();
-    return true;
-  }
-}
+//   async updateShippingAddress(id, data) {
+//     const address = await ShippingAddress.findByPk(id);
+//     if (!address) return null;
+//     return address.update(data);
+//   }
 
-module.exports = new ShippingService();
+//   async deleteShippingAddress(id) {
+//     const address = await ShippingAddress.findByPk(id);
+//     if (!address) return null;
+//     await address.destroy();
+//     return true;
+//   }
+// }
+
+// module.exports = new ShippingService();

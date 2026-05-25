@@ -1,41 +1,47 @@
-// controllers/addressController.js
-const AddressService = require("../services/addressServices");
+const addressService = require("../services/addressServices");
 
-class AddressController {
-  async create(req, res) {
-    try {
-      const userId = req.user.id;
-      const address = await AddressService.createAddress(userId, req.body);
-
-      return res.status(201).json({
-        success: true,
-        message: "Address created successfully",
-        address,
-      });
-    } catch (err) {
-      return res.status(400).json({
-        success: false,
-        message: err.message,
-      });
-    }
-  }
-
-  async getAll(req, res) {
+exports.create = async (req, res) => {
+  try {
+     console.log("Created address:, Im here");
     const userId = req.user.id;
-    //console.log("Fetching addresses for user:", userId);
-    const addresses = await AddressService.getAddressesByUser(userId);
-    //console.log("Addresses found:", addresses);  
-    return res.status(200).json({
+
+    const address = await addressService.createAddress(userId, req.body);
+   
+    return res.status(201).json({
       success: true,
-      addresses,
+      data: address,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
     });
   }
+};
 
-  async getOne(req, res) {
-    const { id } = req.params;
+exports.getAll = async (req, res) => {
+  try {
     const userId = req.user.id;
 
-    const address = await AddressService.getAddressById(id, userId);
+    const addresses = await addressService.getAddressesByUser(userId);
+
+    return res.status(200).json({
+      success: true,
+      data: addresses,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+exports.getOne = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const address = await addressService.getAddressById(req.params.id, userId);
+
     if (!address) {
       return res.status(404).json({
         success: false,
@@ -45,15 +51,26 @@ class AddressController {
 
     return res.status(200).json({
       success: true,
-      address,
+      data: address,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
     });
   }
+};
 
-  async update(req, res) {
-    const { id } = req.params;
+exports.update = async (req, res) => {
+  try {
     const userId = req.user.id;
 
-    const address = await AddressService.updateAddress(id, userId, req.body);
+    const address = await addressService.updateAddress(
+      req.params.id,
+      userId,
+      req.body
+    );
+
     if (!address) {
       return res.status(404).json({
         success: false,
@@ -63,16 +80,22 @@ class AddressController {
 
     return res.status(200).json({
       success: true,
-      message: "Address updated",
-      address,
+      data: address,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
     });
   }
+};
 
-  async delete(req, res) {
-    const { id } = req.params;
+exports.delete = async (req, res) => {
+  try {
     const userId = req.user.id;
 
-    const deleted = await AddressService.deleteAddress(id, userId);
+    const deleted = await addressService.deleteAddress(req.params.id, userId);
+
     if (!deleted) {
       return res.status(404).json({
         success: false,
@@ -84,7 +107,10 @@ class AddressController {
       success: true,
       message: "Address deleted",
     });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
-}
-
-module.exports = new AddressController();
+};

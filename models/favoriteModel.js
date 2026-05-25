@@ -7,8 +7,9 @@ const sequelize = require('../db/database');
   const Favorite = sequelize.define("Favorite", {
     id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     userId: { type: DataTypes.UUID, allowNull: false },
-    productId: { type: DataTypes.UUID, allowNull: false }
-  }, { tableName: "favorites", 
+    productId: { type: DataTypes.UUID, allowNull: false },
+    isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false }
+  }, { tableName: "favorites",
     timestamps: true,
      //indexes: [{ unique: true, fields: ["userId", "productId"] }] 
   });

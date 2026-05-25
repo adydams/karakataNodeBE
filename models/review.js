@@ -29,6 +29,8 @@ const Review = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    
+  isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
   {
     tableName: 'reviews',

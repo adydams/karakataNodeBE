@@ -18,9 +18,10 @@ const sequelize = require('../db/database');
         key: "id",
     },
       onUpdate: "CASCADE",
-      onDelete: "CASCADE", // ✅ delete users if their role is deleted
+    //  onDelete: "CASCADE", // ✅ delete users if their role is deleted
     },
-
+    
+  isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
       // provider + providerId for OAuth
   provider: { type: DataTypes.STRING(50), allowNull: true },
   providerId: { type: DataTypes.STRING(255), allowNull: true }

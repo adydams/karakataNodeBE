@@ -15,6 +15,7 @@ const sequelize = require('../db/database');
   productId: { type: DataTypes.UUID, allowNull: false },   // <-- UUID now
   quantity: { type: DataTypes.INTEGER, allowNull: false },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+  isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
 }, {
   tableName: 'orderitems',
   timestamps: true,

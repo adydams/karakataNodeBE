@@ -44,6 +44,36 @@ const Product = sequelize.define(
       onUpdate: 'CASCADE',
       onDelete: 'SET NULL',
     },
+
+    weightKg: {
+      type: DataTypes.DECIMAL(10, 3),
+      allowNull: false,
+      defaultValue: 0
+    },
+
+    lengthCm: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true
+    },
+
+    widthCm: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true
+    },
+
+    heightCm: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true
+    },
+
+    logisticsCategoryId: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    pickupStationId: {
+        type: DataTypes.UUID,
+        allowNull: true
+      },
     qrCode: {
       type: DataTypes.TEXT("long"), // Cloudinary URL or Base64
     },

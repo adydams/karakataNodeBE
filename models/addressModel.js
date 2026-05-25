@@ -5,40 +5,60 @@ const sequelize = require("../db/database");
 const Address = sequelize.define(
   "Address",
   {
-    id: {
+   id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    line1: {
-      type: DataTypes.STRING(200),
+    addressLine1: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
-    line2: {
-      type: DataTypes.STRING(200),
+
+    addressLine2: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
+
     city: {
-      type: DataTypes.STRING(100),
+      type: DataTypes.STRING,
       allowNull: false,
     },
+
     state: {
-      type: DataTypes.STRING(100),
+      type: DataTypes.STRING,
       allowNull: false,
     },
-    country: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-    },
+
     postalCode: {
-      type: DataTypes.STRING(40),
+      type: DataTypes.STRING,
+      allowNull: false,
     },
+
+    country: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+
+    // ShipBubble validated code
+    shipbubbleAddressCode: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
+
+    isDefault: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+
     isDeleted: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false, // ✅ soft delete
+      defaultValue: false,
     },
   },
   {

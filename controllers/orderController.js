@@ -6,17 +6,27 @@ class OrderController {
    */
   async checkout(req, res) {
     try {
-      const userId = req.user?.id ; // 👈 replace with real auth
-      const { shippingAddressId, gateway, email } = req.body;
-      //console.log("🟢 CHECKOUT START");
-      //console.log("User:", userId);
-      //console.log("Payload:", req.body);
+      const userId = req.user.id ; // 👈 replace with real auth
+      const {
+        shippingAddressId,
+        gateway,
+        email,
+        shippingMethod,
+        requestToken,
+        serviceCode,
+        courierId
+      } = req.body;
+
       const { order, paymentUrl } = await OrderServices.checkout(userId, {
         shippingAddressId,
         gateway,
         email,
         phone: req.body.phone,
         notes: req.body.notes,
+        shippingMethod,
+        requestToken,
+        serviceCode,
+        courierId
       });
 
       return res.status(201).json({

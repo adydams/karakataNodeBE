@@ -4,6 +4,7 @@ const { User } = require('../models'); // if you have index export, else require
 const UserModel = require('../models/userModel');
 
 exports.auth = async (req, res, next) => {
+  try {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ success: false, message: 'No token provided' });
@@ -16,6 +17,10 @@ exports.auth = async (req, res, next) => {
   } catch (err) {
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
+}catch (err) {
+  console.error("Auth middleware error:", err);
+  return res.status(500).json({ success: false, message: 'Server error in authentication' });
+}
 };
 
 exports.requireRole = (...allowedRoles) => (req, res, next) => {

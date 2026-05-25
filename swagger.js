@@ -7,7 +7,7 @@ const doc = {
     title: 'Karakata API', // by default: 'REST API'
     description: 'Karakata API Backend API Documentation' // by default: ''
   },
-  host: 'localhost:2468', // by default: 'localhost:3000'
+  host: 'localhost:5000', // by default: 'localhost:3000'
   basePath: '/api/v1/users', // by default: '/'
   schemes: ['http'], // by default: ['http']
   consumes: ['application/json'], // by default: ['application/json']
