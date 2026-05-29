@@ -21,7 +21,7 @@ const Payment = require("./paymentModel");
 //const ShippingAddress = require("./shippingAddressModel");
 const Role = require("./roleModel");
 const Permission = require("./permissionModel");
-const Address = require("./AddressModel");
+const Address = require("./addressModel");
 const StorePickupStation = require("./StorePickupStation");
 
 
