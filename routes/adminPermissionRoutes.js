@@ -3,7 +3,6 @@ const router = express.Router();
 const adminPermissionController = require("../controllers/adminPermissionController");
 const {auth, authorizeRole} = require("../middlewares/auth");
 //const { authorizeRole } = require("../middleware/auth");
-
 /**
  * @swagger
  * tags:

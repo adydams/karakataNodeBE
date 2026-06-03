@@ -26,6 +26,7 @@ const cartItemRoutes = require('./routes/cartItemRoutes');
 //const shippingRoutes = require('./routes/shippingRoutes');
 const adminPermissionRoutes = require('./routes/adminPermissionRoutes');
 const addressesRoutes = require('./routes/addressRoutes');
+const adminRoutes = require('./routes/AdminRoutes');
 const logisticsRoutes = require('./routes/logisticsRoutes');
 
 const app = express();
@@ -48,12 +49,12 @@ const allowedOrigins = [
 app.use((req, res, next) => {
   const start = Date.now();
 
-  console.log("\n==================================");
-  console.log("📥 Incoming Request");
-  console.log("Method:", req.method);
-  console.log("URL:", req.originalUrl);
-  console.log("IP:", req.ip);
-  console.log("Time:", new Date().toISOString());
+  // console.log("\n==================================");
+  // console.log("📥 Incoming Request");
+  // console.log("Method:", req.method);
+  // console.log("URL:", req.originalUrl);
+  // console.log("IP:", req.ip);
+  // console.log("Time:", new Date().toISOString());
 
   // request timeout detector
   const timeout = setTimeout(() => {
@@ -65,14 +66,14 @@ app.use((req, res, next) => {
 
     const duration = Date.now() - start;
 
-    console.log(
-      `✅ ${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`
-    );
+    // console.log(
+    //   `✅ ${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`
+    // );
     console.log("==================================\n");
   });
 
   res.on("close", () => {
-    console.log(`❌ Connection closed for ${req.originalUrl}`);
+    //console.log(`❌ Connection closed for ${req.originalUrl}`);
   });
 
   next();
@@ -236,6 +237,8 @@ app.use('/api/users', routeLogger('USERS'), userRoutes);
 app.use('/api/permission', routeLogger('PERMISSION'), adminPermissionRoutes);
 app.use('/api/addresses', routeLogger('ADDRESSES'), addressesRoutes);
 app.use('/api/logistics', routeLogger('LOGISTICS'), logisticsRoutes);
+app.use('/api/admin', routeLogger('ADMIN'), adminRoutes);
+
 
 
 // ============================================

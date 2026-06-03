@@ -111,9 +111,10 @@ exports.getAllAdmins = async (req, res) => {
 
 exports.Adminlogin = async (req, res) => {
   try {
+   // console.log("Admin Login attempt controller:", req.body);
     const { email, password } = req.body;
     const { user, token } = await authService.login({ email, password });
-    res.json({ success: true, user, token });
+    res.json({ success: true, user, token, isAdminLogin: true });
   } catch (err) {
     res.status(401).json({ success: false, message: err.message });
   }
