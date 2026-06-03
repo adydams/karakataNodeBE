@@ -26,7 +26,7 @@ const cartItemRoutes = require('./routes/cartItemRoutes');
 //const shippingRoutes = require('./routes/shippingRoutes');
 const adminPermissionRoutes = require('./routes/adminPermissionRoutes');
 const addressesRoutes = require('./routes/addressRoutes');
-const adminRoutes = require('./routes/AdminRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const logisticsRoutes = require('./routes/logisticsRoutes');
 
 const app = express();
