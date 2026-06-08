@@ -2,7 +2,7 @@ const storeService = require("../services/storeServices");
 
 class StoreController {
   async create(req, res) {
-    console.log("Creating store with data:", req.body);
+    
     try {
       const store = await storeService.createStore(req.body);
       res.status(201).json({ success: true, data: store });

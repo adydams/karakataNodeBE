@@ -224,7 +224,7 @@ app.use('/api/auth', routeLogger('AUTH'), authRoutes);
 app.use('/api/brands', routeLogger('BRANDS'), brandRoutes);
 app.use('/api/carts', routeLogger('CARTS'), cartRoutes);
 app.use('/api/cart-items', routeLogger('CART ITEMS'), cartItemRoutes);
-app.use('/api/category', routeLogger('CATEGORY'), categoryRoutes);
+app.use('/api/categories', routeLogger('CATEGORY'), categoryRoutes);
 app.use('/api/favorite', routeLogger('FAVORITE'), favoriteRoutes);
 app.use('/api/orders', routeLogger('ORDERS'), orderRoutes);
 app.use('/api/payments', routeLogger('PAYMENTS'), paymentRoutes);

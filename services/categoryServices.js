@@ -49,6 +49,7 @@ class CategoryServices {
  
 
   async getAllCategories() {
+    console.log("Fetching categories with product counts and images...");
     return await Category.findAll({
       attributes: {
         include: [
