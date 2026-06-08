@@ -11,7 +11,7 @@ const storeController = require("../controllers/storeController");
 
 /**
  * @swagger
- * /stores:
+ * /api/stores:
  *   post:
  *     summary: Create a new store
  *     tags: [Stores]
@@ -45,7 +45,7 @@ router.post("/", storeController.create);
 
 /**
  * @swagger
- * /stores:
+ * /api/stores:
  *   get:
  *     summary: Get all stores
  *     tags: [Stores]
@@ -57,7 +57,7 @@ router.get("/", storeController.getAll);
 
 /**
  * @swagger
- * /stores/{id}:
+ * /api/stores/{id}:
  *   get:
  *     summary: Get a store by ID
  *     tags: [Stores]
@@ -116,7 +116,7 @@ router.put("/:id", storeController.update);
 
 /**
  * @swagger
- * /stores/{id}:
+ * /api/stores/{id}:
  *   delete:
  *     summary: Delete a store
  *     tags: [Stores]
