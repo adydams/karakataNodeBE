@@ -2,7 +2,7 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models'); // if you have index export, else require model path
 const UserModel = require('../models/userModel');
-
+const Role = require('../models/roleModel');
 exports.auth = async (req, res, next) => {
   try {
   const header = req.headers.authorization || '';
@@ -32,43 +32,67 @@ exports.requireRole = (...allowedRoles) => (req, res, next) => {
 };
 
 exports.authenticate = async (req, res, next) => {
-   const header = req.headers.authorization || '';
-    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ")
+    ? header.slice(7)
+    : null;
 
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'No token provided' });
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: "No token provided",
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findByPk(decoded.id, {
+      include: [
+        {
+           model: Role,
+           as: "role",
+          attributes: ["id", "name"],
+        },
+      ],
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token",
+      });
     }
 
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = {
+      id: user.id,
+      roleId: user.roleId,
+      role: user.role?.name,
+      email: user.email,
+      name: user.name,
+    };
+    //console.log("Authenticated User:", req.user);
 
-      // Optionally fetch full user from DB
-      const user = await User.findByPk(decoded.id);
-      if (!user) return res.status(401).json({ success: false, message: 'Invalid token' });
-
-      req.user = {
-        id: user.id,
-        role: user.role,
-        email: user.email,
-        name: user.name,
-      };
-
-      next();
-    } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
-    }
+    next();
+  } catch (err) {
+    console.error(err);
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired token",
+    });
+  }
 };
-
 /**
  * Role-based access control
  * @param  {...string} allowedRoles Roles allowed to access the endpoint
  */
 exports.authorizeRole = (...allowedRoles) => {
-  return (req, res, next) => {
+   return (req, res, next) => {
     if (!req.user) {
+     // console.log("Authorization failed: No user found in request");
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-
+console.log("Authorization check:", {user:req.user, userId: req.user.id, userRole: req.user.role, allowedRoles });
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Forbidden: insufficient rights' });
     }

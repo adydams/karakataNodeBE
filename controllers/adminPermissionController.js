@@ -51,3 +51,22 @@ exports.deletePermission = async (req, res) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+
+exports.assignPermissions = async (req, res) => {
+  try {
+    const { roleId, permissionIds } = req.body;
+
+    const result = await rolePermissionService.assignPermissionsToRole(
+      roleId,
+      permissionIds
+    );
+
+    res.json({ success: true, ...result });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

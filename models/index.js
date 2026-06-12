@@ -111,6 +111,18 @@ try {
   SubCategory.hasMany(Product, { as: "products", foreignKey: "subCategoryId" });
   Product.belongsTo(SubCategory, { foreignKey: "subCategoryId", as: "subcategory" });
 
+
+  // Store ↔ User (owner)
+  Store.belongsTo(User, {
+    foreignKey: "ownerUserId",
+    as: "owner",
+  });
+
+  User.hasOne(Store, {
+    foreignKey: "ownerUserId",
+    as: "store",
+  });
+
  // Product ↔ Store (nullable)
   Store.hasMany(Product, { as: "products", foreignKey: "storeId" });
   Product.belongsTo(Store, { as: "store", foreignKey: "storeId" });

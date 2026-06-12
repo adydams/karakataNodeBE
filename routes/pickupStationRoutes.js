@@ -3,11 +3,9 @@
 const express = require("express");
 const router = express.Router();
 
-const controller =
-  require("../controllers/pickupStationController");
+const controller =  require("../controllers/pickupStationController");
 
-const { auth } =
-  require("../middlewares/auth");
+const { authenticate } =  require("../middlewares/auth");
 
 /**
  * @swagger
@@ -70,7 +68,7 @@ const { auth } =
  *       400:
  *         description: Validation error
  */
-router.post("/", auth, controller.create);
+router.post("/", authenticate, authorizeRole("Admin"), controller.create);
 
 
 /**
@@ -91,7 +89,7 @@ router.post("/", auth, controller.create);
  *       200:
  *         description: List of pickup stations
  */
-router.get("/", auth, controller.getAll);
+router.get("/", authenticate ,authorizeRole("Admin") , controller.getAll);
 
 
 /**
@@ -118,7 +116,7 @@ router.get("/", auth, controller.getAll);
  *       200:
  *         description: Store pickup stations
  */
-router.get("/store/:storeId", auth, controller.getByStore);
+router.get("/store/:storeId", authenticate, authorizeRole("Admin"), controller.getByStore);
 
 
 /**
@@ -147,7 +145,7 @@ router.get("/store/:storeId", auth, controller.getByStore);
  *       404:
  *         description: Not found
  */
-router.get("/:id", auth, controller.getOne);
+router.get("/:id", authenticate, authorizeRole("Admin"), controller.getOne);
 
 
 /**
@@ -189,7 +187,7 @@ router.get("/:id", auth, controller.getOne);
  *       200:
  *         description: Updated successfully
  */
-router.put("/:id", auth, controller.update);
+router.put("/:id", authenticate, controller.update);
 
 
 /**
@@ -216,6 +214,6 @@ router.put("/:id", auth, controller.update);
  *       404:
  *         description: Not found
  */
-router.delete("/:id", auth, controller.delete);
+router.delete("/:id", authenticate, controller.delete);
 
 module.exports = router;

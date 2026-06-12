@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const storeController = require("../controllers/storeController");
-
+const { authorizeRole , authenticate}  = require("../middlewares/auth");
+    
 /**
  * @swagger
  * tags:
@@ -41,7 +42,7 @@ const storeController = require("../controllers/storeController");
  *       201:
  *         description: Store created successfully
  */
-router.post("/", storeController.create);
+router.post("/",authenticate, authorizeRole("Admin"), storeController.create);
 
 /**
  * @swagger
@@ -112,7 +113,7 @@ router.get("/:id", storeController.getById);
  *       404:
  *         description: Store not found
  */
-router.put("/:id", storeController.update);
+router.put("/:id", authenticate,    authorizeRole("Admin"), storeController.update); 
 
 /**
  * @swagger
@@ -133,6 +134,6 @@ router.put("/:id", storeController.update);
  *       404:
  *         description: Store not found
  */
-router.delete("/:id", storeController.delete);
+router.delete("/:id", authenticate, authorizeRole("Admin"), storeController.delete);
 
 module.exports = router;

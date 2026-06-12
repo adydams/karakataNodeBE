@@ -11,6 +11,16 @@ const Store = sequelize.define(
       allowNull: false,
       primaryKey: true,
     },
+    ownerUserId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "users",
+        key: "id",
+      },
+      onUpdate: "CASCADE",
+    },
+
     name: {
       type: DataTypes.STRING,
       allowNull: false,

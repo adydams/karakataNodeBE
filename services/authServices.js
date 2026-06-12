@@ -2,51 +2,161 @@
 const User = require('../models/userModel');
 const Cart = require('../models/cartModel');
 const Role = require('../models/roleModel');
+const Store = require('../models/storeModel');
 
 const { hashPassword, comparePassword } = require('../utils/passwords');
 const { signToken } = require('../utils/jwt');
 const bcrypt = require("bcryptjs");
 
 class AuthServices {
-  // register new user (local)
-  async register({ name, email, phone, password }) {
-    const existing = await User.findOne({ where: { email } });
-    if (existing) throw new Error('Email already in use');
+ async register({ name, email, phone, password }) {
+  const existing = await User.findOne({ where: { email } });
+  if (existing) throw new Error("Email already in use");
 
-    const passwordHash = await hashPassword(password);
-    const user = await User.create({ name, email, phone, passwordHash });
-    const token = signToken({ id: user.id, role: user.role });
-    return { user, token };
+  const passwordHash = await hashPassword(password);
+
+  // 👇 default role = Customer
+  const customerRole = await Role.findOne({
+    where: { name: "Customer" },
+  });
+
+  if (!customerRole) {
+    throw new Error("Customer role not found in system");
   }
+
+  const user = await User.create({
+    name,
+    email,
+    phone,
+    passwordHash,
+    roleId: customerRole.id, // ✅ IMPORTANT FIX
+  });
+
+  const token = signToken({
+    id: user.id,
+    role: "Customer", // or customerRole.name
+  });
+
+  return { user, token };
+}
 
   // login local
-  async login({ email, password, bool: isAdminLogin})
-   { 
-    console.log("Login attempt service:", { email, password: password ? "****" : null, isAdminLogin });
-    const user = await User.findOne({
-    where: { email },
-    include: [{ model: Role, as: 'role' }]
-  });
-  if (!user) throw new Error('Invalid credentials');
+  // async login({ email, password, bool: isAdminLogin})
+  //  { 
+  //   console.log("Login attempt service:", { email, password: password ? "****" : null, isAdminLogin });
+  //   const user = await User.findOne({
+  //   where: { email },
+  //   include: [{ model: Role, as: 'role' },
+  //     {model:store, as : 'store', 
+  //       where: isAdminLogin ? { roleId: user.roleId, role: 'Admin' } : {}, 
+  //       required: isAdminLogin }
+  //   ]
+  // });
+  // if (!user) throw new Error('Invalid credentials');
    
-  let cart = await Cart.findOne({where: {userId:user.id} })
-     if (!cart) {
-    cart = await Cart.create({ userId: user.id });
-    }
-    // user may be OAuth-only (no passwordHash)
-    if (!user.passwordHash) throw new Error('No password set for this account. Use social login.');
+  // let cart = await Cart.findOne({where: {userId:user.id} })
+  //    if (!cart) {
+  //   cart = await Cart.create({ userId: user.id });
+  //   }
+  //   // user may be OAuth-only (no passwordHash)
+  //   if (!user.passwordHash) throw new Error('No password set for this account. Use social login.');
 
-    const ok = await comparePassword(password, user.passwordHash);
-    if (!ok) throw new Error('Invalid credentials');
+  //   const ok = await comparePassword(password, user.passwordHash);
+  //   if (!ok) throw new Error('Invalid credentials');
 
-    const token = signToken({
-      id: user.id, 
-      role:  user.role ? user.role.name : 'user', 
-      cartId: cart.id  
-     });
+  //   const token = signToken({
+  //     id: user.id, 
+  //     role:  user.role ? user.role.name : 'user', 
+  //     cartId: cart.id ,
+  //      store: store.name
+        
+  //   } ); 
       
-    return { token };
+  //   return { token };
+  // }
+
+
+ 
+
+async login({ email, password, isAdminLogin = false }) {
+
+  console.log("Login attempt service:", { email });
+
+  const user = await User.findOne({
+    where: { email },
+    include: [
+      { model: Role, as: "role" },
+      {
+        model: Store,
+        as: "store",
+        required: false
+      }
+    ]
+  });
+
+  if (!user) throw new Error("Invalid credentials");
+
+  if (!user.passwordHash) {
+    throw new Error("No password set for this account");
   }
+  
+  const roleName = user.role?.name;
+
+  // 🚨 STOP HERE if admin login is required
+  if (isAdminLogin && !["Admin","SuperAdmin", "StoreAdmin"].includes(roleName)) {
+    throw new Error("You are not allowed to access admin login");
+  }
+
+  const ok = await comparePassword(password, user.passwordHash);
+  if (!ok) throw new Error("Invalid credentials");
+
+  // =========================
+  // CART (ONLY CUSTOMER)
+  // =========================
+  let cartId = null;
+
+  if (roleName === "Customer") {
+    let cart = await Cart.findOne({
+      where: { userId: user.id }
+    });
+
+    if (!cart) {
+      cart = await Cart.create({ userId: user.id });
+    }
+
+    cartId = cart.id;
+  }
+
+  // =========================
+  // TOKEN PAYLOAD
+  // =========================
+  const token = signToken({
+    id: user.id,
+    role: roleName,
+    cartId: cartId, // null for admin users
+    storeId: user.store?.id || null
+  });
+
+  // =========================
+  // RESPONSE
+  // =========================
+  return {
+    token,
+    // user: {
+    //   id: user.id,
+    //   name: user.name,
+    //   email: user.email,
+    //   role: roleName,
+
+    //   store: user.store
+    //     ? {
+    //         id: user.store.id,
+    //         name: user.store.name
+    //       }
+    //     : null
+    // }
+  };
+}
 
   // find or create from OAuth profile (Google)
   // profile: { id, displayName, emails: [{value}] }

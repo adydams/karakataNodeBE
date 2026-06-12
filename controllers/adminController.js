@@ -111,9 +111,9 @@ exports.getAllAdmins = async (req, res) => {
 
 exports.Adminlogin = async (req, res) => {
   try {
-   // console.log("Admin Login attempt controller:", req.body);
+    console.log("Admin Login attempt controller:", req.body);
     const { email, password } = req.body;
-    const { user, token } = await authService.login({ email, password });
+    const { user, token } = await authService.login({ email, password, isAdminLogin: true });
     res.json({ success: true, user, token, isAdminLogin: true });
   } catch (err) {
     res.status(401).json({ success: false, message: err.message });
@@ -121,17 +121,21 @@ exports.Adminlogin = async (req, res) => {
 };
 
 
+
+
 exports.onboardAdmin = async (req, res) => {
   try {
-    //console.log("req.user.roleName")
-    //console.log(req.user.role)
+  
     // ✅ Check SuperAdmin permission based on role name
-    if (!req.user || req.user.role !== "SuperAdmin") {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. Only SuperAdmin can onboard Admin users.",
-      });
-    }
+    // if (!req.user || req.user.role !== "SuperAdmin") {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "Access denied. Only SuperAdmin can onboard Admin users.",
+    //   });
+    // }
+
+
+
 
     const { name, email, phone } = req.body;
     const staticPassword = "Admin@123";
@@ -154,20 +158,20 @@ exports.onboardAdmin = async (req, res) => {
       roleId: adminRole.id, // Use UUID roleId
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Admin user onboarded successfully",
-      user,
-      token,
-    });
-  } catch (err) {
-    console.error("❌ Onboarding error:", err);
-    res.status(400).json({
-      success: false,
-      message: err.message,
-    });
-  }
-};
+        res.status(201).json({
+          success: true,
+          message: "Admin user onboarded successfully",
+          user,
+          token,
+        });
+      } catch (err) {
+        console.error("❌ Onboarding error:", err);
+        res.status(400).json({
+          success: false,
+          message: err.message,
+        });
+      }
+    };
 
 
 // ✅ Get all Admins with pagination and role info

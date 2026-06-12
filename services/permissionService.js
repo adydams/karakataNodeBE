@@ -56,3 +56,26 @@ exports.deletePermission = async (id) => {
 
   return { message: "Permission deleted successfully" };
 };
+
+
+exports.assignPermissionsToRole = async (roleId, permissionIds) => {
+  const role = await Role.findByPk(roleId);
+
+  if (!role) throw new Error("Role not found");
+
+  const permissions = await Permission.findAll({
+    where: { id: permissionIds },
+  });
+
+  if (!permissions.length) {
+    throw new Error("No valid permissions found");
+  }
+
+  await role.setPermissions(permissions); // Sequelize magic method
+
+  return {
+    message: "Permissions assigned successfully",
+    roleId,
+    permissionCount: permissions.length,
+  };
+};

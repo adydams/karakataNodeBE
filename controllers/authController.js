@@ -13,7 +13,7 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    //console.log("Login attempt controller:", req.body);
+    console.log("Login attempt controller:", req.body);
     const { email, password } = req.body;
     const { user, token } = await authService.login({ email, password });
     res.json({ success: true, user, token });

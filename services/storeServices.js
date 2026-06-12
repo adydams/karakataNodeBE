@@ -1,8 +1,25 @@
 const Store = require("../models/storeModel");
 
 class StoreServices {
-  async createStore(data) {
-    return await Store.create(data);
+  async createStore(data, userId) {
+    console.log("Creating store with data:", { data, userId });
+   const existingStore = await Store.findOne({
+        where: {
+            ownerUserId: userId,
+            isDeleted: false
+        }
+    });
+console.log("Existing store check:", { userId, existingStore: existingStore ? existingStore.toJSON() : null });
+    if (existingStore) {
+        throw new Error(
+            "You already have a store"
+        );
+    }
+
+    return await Store.create({
+        ...data,
+        ownerUserId: userId
+    });
   }
 
   async getAllStores() {

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const adminPermissionController = require("../controllers/adminPermissionController");
-const {auth, authorizeRole} = require("../middlewares/auth");
+const {authenticate, authorizeRole} = require("../middlewares/auth");
 //const { authorizeRole } = require("../middleware/auth");
 /**
  * @swagger
@@ -70,7 +70,7 @@ const {auth, authorizeRole} = require("../middlewares/auth");
  */
 router.get(
   "/",
-  auth,
+  authenticate,
   authorizeRole("SuperAdmin"),
   adminPermissionController.getAllPermissions
 );
@@ -123,7 +123,7 @@ router.get(
  */
 router.post(
   "/",
-  auth,
+  authenticate,
   authorizeRole("SuperAdmin"),
   adminPermissionController.createPermission
 );
@@ -181,7 +181,7 @@ router.post(
  */
 router.put(
   "/:id",
-  auth,
+  authenticate,
   authorizeRole("SuperAdmin"),
   adminPermissionController.updatePermission
 );
@@ -217,9 +217,104 @@ router.put(
  */
 router.delete(
   "/:id",
-  auth,
+  authenticate,
   authorizeRole("SuperAdmin"),
   adminPermissionController.deletePermission
+);
+
+
+/**
+ * @swagger
+ * /api/roles/assign-permissions:
+ *   post:
+ *     summary: Assign permissions to a role
+ *     description: |
+ *       Assigns one or more permissions to a specific role.
+ *       Only users with Admin role can perform this action.
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - roleId
+ *               - permissionIds
+ *             properties:
+ *               roleId:
+ *                 type: integer
+ *                 example: 1
+ *                 description: ID of the role to assign permissions to
+ *               permissionIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 example: [1, 2, 3]
+ *                 description: Array of permission IDs
+ *     responses:
+ *       200:
+ *         description: Permissions assigned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Permissions assigned successfully
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Bad request (invalid input or assignment error)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Role not found
+ *       401:
+ *         description: Unauthorized (missing or invalid token)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: No token provided
+ *       403:
+ *         description: Forbidden (insufficient role)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Forbidden: insufficient rights
+ */
+router.post(
+  "/assign-permissions",
+  authenticate,
+  authorizeRole("Admin"),
+  adminPermissionController.assignPermissions
 );
 
 module.exports = router;

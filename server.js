@@ -35,7 +35,7 @@ process.on("uncaughtException", (err) => {
 
    // console.log('✅ Database connection established successfully.');
 
-    await sequelize.sync({ alter: false });
+    sequelize.sync({  alter: false }); // Set to true if you want Sequelize to automatically update the schema (use with caution in production)
 
    // console.log('✅ Database synchronized.');
 

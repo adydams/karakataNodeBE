@@ -2,9 +2,14 @@ const storeService = require("../services/storeServices");
 
 class StoreController {
   async create(req, res) {
-    
+     
     try {
-      const store = await storeService.createStore(req.body);
+      console.log("Create store request received:", { body: req.user, user: req.user });
+      const userId = req.user.id; // Assuming you have user info in req.user
+      if (!userId) {
+        return res.status(400).json({ success: false, message: "User login required" });
+      }
+      const store = await storeService.createStore(req.body, userId);
       res.status(201).json({ success: true, data: store });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

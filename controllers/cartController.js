@@ -8,7 +8,7 @@ exports.createCart = async (req, res) => {
     
     const userId  = req.user.id;
     if (!userId) {
-      return res.status(400).json({ success: false, error: "userId is required" });
+      return res.status(400).json({ success: false, error: "user login required" });
     }
     
     const anyCart = await Cart.findOne({

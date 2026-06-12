@@ -81,7 +81,7 @@ const User = require("../models/userModel");
 const seedRolesAndPermissions = async () => {
   try {
     // 1️⃣ Create Roles
-    const roles = ["SuperAdmin", "SystemAdmin", "Admin", "User"];
+    const roles = ["SuperAdmin", "SystemAdmin", "Admin", "Customer"];
     for (const roleName of roles) {
       await Role.findOrCreate({
         where: { name: roleName },
