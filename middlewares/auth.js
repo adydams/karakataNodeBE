@@ -71,7 +71,7 @@ exports.authenticate = async (req, res, next) => {
       email: user.email,
       name: user.name,
     };
-    //console.log("Authenticated User:", req.user);
+   // console.log("Authenticated User:", req.user);
 
     next();
   } catch (err) {

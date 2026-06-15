@@ -12,7 +12,7 @@ const {authenticate, authorizeRole} = require("../middlewares/auth");
 
 /**
  * @swagger
- * /api/admin/permissions:
+ * /api/permission:
  *   get:
  *     summary: Get all permissions
  *     description: Retrieve a list of all permissions (non-deleted), with optional filtering and pagination.
@@ -71,13 +71,13 @@ const {authenticate, authorizeRole} = require("../middlewares/auth");
 router.get(
   "/",
   authenticate,
-  //authorizeRole("SuperAdmin"),
+  authorizeRole("SuperAdmin"),
   adminPermissionController.getAllPermissions
 );
 
 /**
  * @swagger
- * /api/admin/permissions:
+ * /api/permission:
  *   post:
  *     summary: Create a new permission
  *     description: Allows a SuperAdmin to create a new permission.
@@ -130,7 +130,7 @@ router.post(
 
 /**
  * @swagger
- * /api/admin/permissions/{id}:
+ * /api/permission/{id}:
  *   put:
  *     summary: Update an existing permission
  *     description: Modify a permission’s name or description.
@@ -188,7 +188,7 @@ router.put(
 
 /**
  * @swagger
- * /api/admin/permissions/{id}:
+ * /api/permission/{id}:
  *   delete:
  *     summary: Soft delete a permission
  *     description: Marks a permission as deleted instead of permanently removing it.
@@ -225,7 +225,7 @@ router.delete(
 
 /**
  * @swagger
- * /api/roles/assign-permissions:
+ * /api/permission/assign-permissions-to-role:
  *   post:
  *     summary: Assign permissions to a role
  *     description: |
@@ -310,6 +310,6 @@ router.delete(
  *                   type: string
  *                   example: Forbidden: insufficient rights
  */
-  router.post( "/assign-permissions", authenticate,  authorizeRole("Admin"),   adminPermissionController.assignPermissions  );
+  router.post( "/assign-permissions-to-role", authenticate,  authorizeRole("Admin"),   adminPermissionController.assignPermissions  );
 
 module.exports = router;
