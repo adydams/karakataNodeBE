@@ -124,7 +124,7 @@ router.post("/login", adminController.Adminlogin);
 router.post("/onboard-admin",
              auth,
              //authorizeRole("SuperAdmin", "SystemAdmin"), // Multi-role access
-             authorizeRole("SuperAdmin"),
+            // authorizeRole("SuperAdmin"),
              //checkPermissions("admin:create"),  
              adminController.onboardAdmin);
              

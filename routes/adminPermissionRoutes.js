@@ -71,7 +71,7 @@ const {authenticate, authorizeRole} = require("../middlewares/auth");
 router.get(
   "/",
   authenticate,
-  authorizeRole("SuperAdmin"),
+  //authorizeRole("SuperAdmin"),
   adminPermissionController.getAllPermissions
 );
 
@@ -310,11 +310,6 @@ router.delete(
  *                   type: string
  *                   example: Forbidden: insufficient rights
  */
-router.post(
-  "/assign-permissions",
-  authenticate,
-  authorizeRole("Admin"),
-  adminPermissionController.assignPermissions
-);
+  router.post( "/assign-permissions", authenticate,  authorizeRole("Admin"),   adminPermissionController.assignPermissions  );
 
 module.exports = router;

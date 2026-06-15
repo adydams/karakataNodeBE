@@ -10,6 +10,10 @@ const sequelize = require('../db/database');
     phone: { type: DataTypes.STRING(40) },
    // passwordHash will be null for OAuth-only users
     passwordHash: { type: DataTypes.STRING(255), allowNull: false },
+    isActive: {
+      type: DataTypes.BOOLEAN ,
+      defaultValue: false
+    },
     roleId: {
       type: DataTypes.UUID,
       allowNull: true,
@@ -17,7 +21,7 @@ const sequelize = require('../db/database');
         model: "roles",
         key: "id",
     },
-      onUpdate: "CASCADE",
+    onUpdate: "CASCADE",
     //  onDelete: "CASCADE", // ✅ delete users if their role is deleted
     },
     
