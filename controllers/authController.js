@@ -51,6 +51,19 @@ exports.changePasswordFirstTime = async (req, res) => {
   }
 };
 
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user.id;
+    const result = await authService.changePassword(userId, oldPassword, newPassword);
+    res.json({ success: true, message: result.message });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+
+
 exports.me = async (req, res) => {
   try {
     const user = await authService.getById(req.user.id);

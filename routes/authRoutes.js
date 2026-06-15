@@ -143,7 +143,79 @@ router.get("/google/callback", async (req, res) => {
  *       200: { description: User data }
  *       401: { description: Unauthorized }
  */
-router.get("/me", auth, ensureActive, authCtrl.me);
-router.post("/change-password-first-time", auth, authCtrl.changePasswordFirstTime);
+router.get("/me", auth, ensureActive, authCtrl.me);/**
+ * @swagger
+ * /api/auth/change-password-first-time:
+ *   post:
+ *     summary: Change password on first login
+ *     description: Allows a newly registered or first-time user to set a new password.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, oldPassword, newPassword]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *               oldPassword:
+ *                 type: string
+ *                 example: Temp@123
+ *               newPassword:
+ *                 type: string
+ *                 example: MyNewStrongPassword@123
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Invalid request or password mismatch
+ *       401:
+ *         description: Unauthorized
+ */
+router.post(
+  "/change-password-first-time",
+  authCtrl.changePasswordFirstTime
+);
+
+/**
+ * @swagger
+ * /api/auth/change-password:
+ *   post:
+ *     summary: Change user password
+ *     description: Allows an authenticated user to change their current password.
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 example: OldPassword@123
+ *               newPassword:
+ *                 type: string
+ *                 example: NewStrongPassword@456
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Invalid request or password mismatch
+ *       401:
+ *         description: Unauthorized
+ */
+router.post(
+  "/change-password",
+  auth,
+  ensureActive,
+  authCtrl.changePassword
+);
 
 module.exports = router;
