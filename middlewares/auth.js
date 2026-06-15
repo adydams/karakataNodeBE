@@ -70,6 +70,7 @@ exports.authenticate = async (req, res, next) => {
       role: user.role?.name,
       email: user.email,
       name: user.name,
+      isActive: user.isActive,
     };
    // console.log("Authenticated User:", req.user);
 
@@ -82,6 +83,19 @@ exports.authenticate = async (req, res, next) => {
     });
   }
 };
+
+exports.ensureActive = async (req, res, next) => {
+  if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  if (req.user.isActive === false) {
+    return res.status(403).json({
+      success: false,
+      message: 'USER_INACTIVE',
+      error: 'Your account is not active. Please change your password to activate it.'
+    });
+  }
+  next();
+};
+
 /**
  * Role-based access control
  * @param  {...string} allowedRoles Roles allowed to access the endpoint

@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const storeController = require("../controllers/storeController");
-const { authorizeRole , authenticate}  = require("../middlewares/auth");
-    
+const {authenticate, authorizeRole} = require("../middlewares/auth");
+
 /**
  * @swagger
  * tags:
@@ -10,12 +10,15 @@ const { authorizeRole , authenticate}  = require("../middlewares/auth");
  *   description: Store management
  */
 
+
 /**
  * @swagger
  * /api/stores:
  *   post:
  *     summary: Create a new store
  *     tags: [Stores]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -23,6 +26,10 @@ const { authorizeRole , authenticate}  = require("../middlewares/auth");
  *           schema:
  *             type: object
  *             properties:
+ *               storeOwnerId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional. Only SuperAdmin can create a store for another user.
  *               name:
  *                 type: string
  *                 example: My Store
@@ -42,7 +49,7 @@ const { authorizeRole , authenticate}  = require("../middlewares/auth");
  *       201:
  *         description: Store created successfully
  */
-router.post("/",authenticate, authorizeRole("Admin"), storeController.create);
+router.post("/",  authenticate, authorizeRole("Admin", "SuperAdmin"), storeController.create);
 
 /**
  * @swagger
@@ -54,7 +61,7 @@ router.post("/",authenticate, authorizeRole("Admin"), storeController.create);
  *       200:
  *         description: List of stores
  */
-router.get("/", storeController.getAll);
+router.get("/", authorizeRole("Admin", "SuperAdmin"), storeController.getAll);
 
 /**
  * @swagger
@@ -75,7 +82,7 @@ router.get("/", storeController.getAll);
  *       404:
  *         description: Store not found
  */
-router.get("/:id", storeController.getById);
+router.get("/:id", authorizeRole("Admin", "SuperAdmin"), storeController.getById);
 
 /**
  * @swagger
@@ -113,7 +120,7 @@ router.get("/:id", storeController.getById);
  *       404:
  *         description: Store not found
  */
-router.put("/:id", authenticate,    authorizeRole("Admin"), storeController.update); 
+router.put("/:id",authorizeRole("Admin", "SuperAdmin"), storeController.update);
 
 /**
  * @swagger
@@ -134,6 +141,6 @@ router.put("/:id", authenticate,    authorizeRole("Admin"), storeController.upda
  *       404:
  *         description: Store not found
  */
-router.delete("/:id", authenticate, authorizeRole("Admin"), storeController.delete);
+router.delete("/:id",authorizeRole("SuperAdmin"), storeController.delete);
 
 module.exports = router;

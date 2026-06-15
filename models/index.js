@@ -23,6 +23,7 @@ const Role = require("./roleModel");
 const Permission = require("./permissionModel");
 const Address = require("./addressModel");
 const StorePickupStation = require("./StorePickupStation");
+const AuditLog = require("./auditLogModel");
 
 
 // Validate that all imports are proper Sequelize models
@@ -45,6 +46,7 @@ const models = {
   StorePickupStation,
   Role,
   Permission,
+  AuditLog,
 };
 
 // Check each model
@@ -118,6 +120,11 @@ try {
     as: "owner",
   });
 
+  Store.belongsTo(User, {
+    foreignKey: "createdBy",
+    as: "creator"
+  });
+
   User.hasOne(Store, {
     foreignKey: "ownerUserId",
     as: "store",
@@ -161,23 +168,33 @@ try {
    
     Address.hasMany(Order, { foreignKey: "shippingAddressId", as: "orders" });
 
-Order.belongsTo(Address, { foreignKey: "shippingAddressId", as: "shippingAddress" });
+  Order.belongsTo(Address, { foreignKey: "shippingAddressId", as: "shippingAddress" });
     Role.belongsToMany(Permission, {
       through: "RolePermissions",
       foreignKey: "roleId",
       as: "permissions",
     });
-    Permission.belongsToMany(Role, {
+  Permission.belongsToMany(Role, {
       through: "RolePermissions",
       foreignKey: "permissionId",
       as: "roles",
     });
     
 
+   User.hasMany(Permission, {
+      foreignKey: "createdBy",
+      as: "createdPermissions",
+    });
+
+    Permission.belongsTo(User, {
+      foreignKey: "createdBy",
+      as: "creator",
+    }); 
+
  // 🟢 User ↔ Role (one-to-many)
   Role.hasMany(User, { foreignKey: "roleId", as: "users" });
   User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
-
+  AuditLog.belongsTo(User, { foreignKey: "userId", as: "user" });
   //console.log('✓ All model associations created successfully');
 
 } catch (error) {
@@ -198,8 +215,12 @@ module.exports = {
   OrderItem,
   User,
   Payment,
-  // ShippingAddress,
-  Brand,  
+  Brand,
   Address,
-  StorePickupStation
+  StorePickupStation,
+  Role,
+  Permission,
+  SubCategory,
+  Store,
+  AuditLog
 };

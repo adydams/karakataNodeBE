@@ -1,20 +1,35 @@
 const storeService = require("../services/storeServices");
 
 class StoreController {
+ 
   async create(req, res) {
-     
     try {
-      console.log("Create store request received:", { body: req.user, user: req.user });
-      const userId = req.user.id; // Assuming you have user info in req.user
-      if (!userId) {
-        return res.status(400).json({ success: false, message: "User login required" });
-      }
-      const store = await storeService.createStore(req.body, userId);
-      res.status(201).json({ success: true, data: store });
+
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required"
+            });
+        }
+
+        const store = await storeService.createStore(
+            req.body,
+            req.user
+        );
+
+        return res.status(201).json({
+            success: true,
+            data: store
+        });
+
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-  }
+ }
+
 
   async getAll(req, res) {
     try {

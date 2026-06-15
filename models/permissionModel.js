@@ -19,6 +19,16 @@ const Permission = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    createdBy: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "users",
+        key: "id",
+      },
+      onUpdate: "CASCADE",
+    },
+    
     isDeleted: {
       type: DataTypes.BOOLEAN,
       defaultValue: false, // Soft delete flag

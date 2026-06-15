@@ -37,7 +37,7 @@ const Address = sequelize.define(
 
     postalCode: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
 
     country: {

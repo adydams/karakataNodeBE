@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const adminPermissionController = require("../controllers/adminPermissionController");
-const {authenticate, authorizeRole} = require("../middlewares/auth");
+const {authenticate, authorizeRole, ensureActive} = require("../middlewares/auth");
 //const { authorizeRole } = require("../middleware/auth");
 /**
  * @swagger
  * tags:
- *   name: Admin Management
+ *   name: Admin permission Management
  *   description: Manage permissions for admin roles
  */
 
@@ -16,7 +16,7 @@ const {authenticate, authorizeRole} = require("../middlewares/auth");
  *   get:
  *     summary: Get all permissions
  *     description: Retrieve a list of all permissions (non-deleted), with optional filtering and pagination.
- *     tags: [Admin Management]
+ *     tags: [Admin permission Management]
  *     parameters:
  *       - in: query
  *         name: name
@@ -71,6 +71,7 @@ const {authenticate, authorizeRole} = require("../middlewares/auth");
 router.get(
   "/",
   authenticate,
+  ensureActive,
   authorizeRole("SuperAdmin"),
   adminPermissionController.getAllPermissions
 );
@@ -81,7 +82,7 @@ router.get(
  *   post:
  *     summary: Create a new permission
  *     description: Allows a SuperAdmin to create a new permission.
- *     tags: [Admin Management]
+ *     tags: [Admin permission Management]
  *     requestBody:
  *       required: true
  *       content:
@@ -124,9 +125,103 @@ router.get(
 router.post(
   "/",
   authenticate,
+  ensureActive,
   authorizeRole("SuperAdmin"),
   adminPermissionController.createPermission
 );
+
+
+/**
+ * @swagger
+ * /api/permission/bulk:
+ *   post:
+ *     summary: Create multiple permissions
+ *     description: Allows a SuperAdmin to create multiple permissions in a single request.
+ *     tags: [Admin Management]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               type: object
+ *               required:
+ *                 - name
+ *               properties:
+ *                 name:
+ *                   type: string
+ *                   example: admin:create
+ *                 description:
+ *                   type: string
+ *                   example: Create administrators
+ *           example:
+ *             - name: admin:create
+ *               description: Create administrators
+ *             - name: admin:view
+ *               description: View administrators
+ *             - name: admin:update
+ *               description: Update administrators
+ *             - name: admin:delete
+ *               description: Delete administrators
+ *     responses:
+ *       201:
+ *         description: Permissions created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Permissions created successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *       400:
+ *         description: Validation error or duplicate permission
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Permission already exists
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Only SuperAdmin can create permissions
+ */
+router.post(
+  "/bulk",
+  authenticate,
+  ensureActive,
+  authorizeRole("SuperAdmin"),
+  adminPermissionController.createPermissions
+);
+
+
 
 /**
  * @swagger
@@ -182,6 +277,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
+  ensureActive,
   authorizeRole("SuperAdmin"),
   adminPermissionController.updatePermission
 );
@@ -218,6 +314,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
+  ensureActive,
   authorizeRole("SuperAdmin"),
   adminPermissionController.deletePermission
 );
@@ -296,20 +393,20 @@ router.delete(
  *                 message:
  *                   type: string
  *                   example: No token provided
- *       403:
- *         description: Forbidden (insufficient role)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: Forbidden: insufficient rights
+ *     403:
+ *        description: Forbidden (insufficient rights)
+ *        content:
+ *          application/json:
+ *        schema:
+ *          type: object
+ *          properties:
+ *            success:
+ *            type: boolean
+ *            example: false
+ *          message:
+ *            type: string
+ *            example: "Forbidden: insufficient rights"
  */
-  router.post( "/assign-permissions-to-role", authenticate,  authorizeRole("Admin"),   adminPermissionController.assignPermissions  );
+  router.post( "/assign-permissions-to-role", authenticate, ensureActive, authorizeRole("Admin"),   adminPermissionController.assignPermissions  );
 
 module.exports = router;

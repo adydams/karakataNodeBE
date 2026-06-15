@@ -26,6 +26,57 @@ exports.createPermission = async (req, res) => {
   }
 };
 
+exports.createPermissions = async (req, res) => {
+  try {
+    const permissions = req.body;
+    const userId = req.user.id; // Assuming you have user info in req.user
+
+    const createdPermissions = [];
+    const existingPermissions = [];
+
+    for (const permission of permissions) {
+      const existing = await permissionService.getPermissionByName(
+        permission.name
+      );
+
+      if (existing) {
+        existingPermissions.push(permission.name);
+        continue;
+      }
+
+      const created = await permissionService.createPermission(permission, userId);
+      createdPermissions.push(created);
+    }
+
+    if (createdPermissions.length === 0) {
+      return res.status(409).json({
+        success: false,
+        message: "All permissions already exist",
+        data: {
+          existing: existingPermissions
+        }
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: `${createdPermissions.length} permission(s) created successfully`,
+      data: {
+        created: createdPermissions,
+        existing: existingPermissions
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error creating permissions:", error);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // 🔹 UPDATE a permission
 exports.updatePermission = async (req, res) => {
   try {

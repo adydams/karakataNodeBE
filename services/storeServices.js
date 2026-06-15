@@ -1,26 +1,39 @@
 const Store = require("../models/storeModel");
 
 class StoreServices {
-  async createStore(data, userId) {
-    console.log("Creating store with data:", { data, userId });
-   const existingStore = await Store.findOne({
+ async createStore(data, currentUser) {
+
+    const ownerUserId = data.storeOwnerId || currentUser.id;
+
+    // If creating for another user, only SuperAdmin can do it
+    if (
+        ownerUserId !== currentUser.id &&
+        currentUser.role !== "SuperAdmin"
+    ) {
+        throw new Error(
+            "You are not authorized to create a store for another user"
+        );
+    }
+
+    const existingStore = await Store.findOne({
         where: {
-            ownerUserId: userId,
+            ownerUserId,
             isDeleted: false
         }
     });
-console.log("Existing store check:", { userId, existingStore: existingStore ? existingStore.toJSON() : null });
+
     if (existingStore) {
         throw new Error(
-            "You already have a store"
+            "This user already has a store"
         );
     }
 
     return await Store.create({
         ...data,
-        ownerUserId: userId
+        ownerUserId,
+        createdBy: currentUser.id
     });
-  }
+}
 
   async getAllStores() {
     return await Store.findAll();

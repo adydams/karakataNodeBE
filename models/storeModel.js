@@ -52,6 +52,15 @@ const Store = sequelize.define(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    createdBy: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "users",
+        key: "id",
+      },
+      onUpdate: "CASCADE",
+    },
     
   isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   },

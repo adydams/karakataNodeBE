@@ -3,7 +3,7 @@ const router = express.Router();
 const authCtrl = require("../controllers/authController");
 const passport = require("passport");
 const setupPassport = require("../config/passport");
-const { auth } = require("../middlewares/auth");
+const { auth, ensureActive } = require("../middlewares/auth");
 
 setupPassport();
 router.use(passport.initialize());
@@ -143,6 +143,7 @@ router.get("/google/callback", async (req, res) => {
  *       200: { description: User data }
  *       401: { description: Unauthorized }
  */
-router.get("/me", auth, authCtrl.me);
+router.get("/me", auth, ensureActive, authCtrl.me);
+router.post("/change-password-first-time", auth, authCtrl.changePasswordFirstTime);
 
 module.exports = router;
