@@ -66,11 +66,11 @@ exports.changePasswordFirstTime = async (req, res) => {
   }
 };
 
-exports.changePassword = async (req, res) => {
+exports.resetPassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
     const userId = req.user.id;
-    const result = await authService.changePassword(userId, oldPassword, newPassword);
+    const result = await authService.resetPassword(userId, oldPassword, newPassword);
     res.json({ success: true, message: result.message });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -78,6 +78,19 @@ exports.changePassword = async (req, res) => {
 };
 
 
+
+exports.completePasswordReset = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, message: "Token and new password are required" });
+    }
+    const result = await authService.completePasswordReset(token, newPassword);
+    res.json({ success: true, message: result.message });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
 
 exports.me = async (req, res) => {
   try {

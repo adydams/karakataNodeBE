@@ -182,7 +182,7 @@ router.post(
 
 /**
  * @swagger
- * /api/auth/change-password:
+ * /api/auth/complete-reset-password:
  *   post:
  *     summary: Change user password
  *     description: Allows an authenticated user to change their current password.
@@ -212,10 +212,62 @@ router.post(
  *         description: Unauthorized
  */
 router.post(
-  "/change-password",
+  "/complete-reset",
+  authCtrl.completePasswordReset
+);
+
+ /**
+  * @swagger
+  * /api/auth/reset-password:
+  *   post:
+  *     summary: Reset user password
+  *     description: Allows an authenticated and active user to reset their password.
+  *     tags: [Auth]
+  *     security:
+  *       - bearerAuth: []
+  *     requestBody:
+  *       required: true
+  *       content:
+  *         application/json:
+  *           schema:
+  *             type: object
+  *             required:
+  *               - oldPassword
+  *               - newPassword
+  *             properties:
+  *               oldPassword:
+  *                 type: string
+  *                 example: "OldPassword123"
+  *               newPassword:
+  *                 type: string
+  *                 example: "NewStrongPassword@123"
+  *     responses:
+  *       200:
+  *         description: Password reset successful
+  *         content:
+  *           application/json:
+  *             schema:
+  *               type: object
+  *               properties:
+  *                 success:
+  *                   type: boolean
+  *                   example: true
+  *                 message:
+  *                   type: string
+  *                   example: "Password updated successfully"
+  *       400:
+  *         description: Bad request (invalid input)
+  *       401:
+  *         description: Unauthorized (invalid token or wrong password)
+  *       403:
+  *         description: Forbidden (inactive user)
+  */
+
+router.post(
+  "/reset-password",
   auth,
   ensureActive,
-  authCtrl.changePassword
+  authCtrl.resetPassword
 );
 
 module.exports = router;

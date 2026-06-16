@@ -21,6 +21,20 @@ const sequelize = require('../db/database');
         model: "roles",
         key: "id",
     },
+    // =========================
+  // 🔐 PASSWORD RESET FIELDS
+  // =========================
+
+    passwordResetToken: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+
+    passwordResetExpires: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+      
     onUpdate: "CASCADE",
     //  onDelete: "CASCADE", // ✅ delete users if their role is deleted
     },

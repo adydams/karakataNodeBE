@@ -3,13 +3,23 @@ const User = require('../models/userModel');
 const Cart = require('../models/cartModel');
 const Role = require('../models/roleModel');
 const Store = require('../models/storeModel');
+const crypto = require("crypto");
 
+const emailService = require('./emailServices');
 const { hashPassword, comparePassword } = require('../utils/passwords');
 const { signToken } = require('../utils/jwt');
 const bcrypt = require("bcryptjs");
 
 class AuthServices {
+
  async register({ name, email, phone, password }) {
+
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  const resetTokenHash = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
   const existing = await User.findOne({ where: { email } });
   if (existing) throw new Error("Email already in use");
 
@@ -31,14 +41,32 @@ class AuthServices {
     passwordHash,
     roleId: customerRole.id, // ✅ IMPORTANT FIX
   });
-
+  await User.update(
+  {
+    passwordResetToken: resetTokenHash,
+    passwordResetExpires: Date.now() + 1000 * 60 * 30 // 30 mins
+  },
+  { where: { id: user.id } }
+);
   const token = signToken({
     id: user.id,
     role: "Customer", // or customerRole.name
   });
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+  await emailService.sendEmail({
+    to: user.email,
+    subject: "Set Your Password",
+    html: `
+      <h2>Welcome ${user.name}</h2>
+      <p>Please set your password using the link below:</p>
+      <a href="${resetUrl}">Change Password</a>
+      <p>This link expires in 30 minutes.</p>
+    `
+  });
 
   return { user, token };
-}
+  }
 
   // login local
   // async login({ email, password, bool: isAdminLogin})
@@ -214,7 +242,7 @@ async login({ email, password, isAdminLogin = false }) {
     return await User.findByPk(id, { attributes: { exclude: ['passwordHash'] } });
   }
 
-  async changePassword(userId, oldPassword, newPassword)
+  async resetPassword(userId, oldPassword, newPassword)
    {
       const user = await User.findByPk(userId); // Sequelize syntax
       if (!user) throw new Error("User not found");
@@ -260,11 +288,41 @@ async login({ email, password, isAdminLogin = false }) {
 };
 
 async deleteUser (id) {
-  const user = await User.findByPk(id);
-  if (!user) throw new Error("User not found");
-  await user.destroy();
-  return true;
-};
+    const user = await User.findByPk(id);
+    if (!user) throw new Error("User not found");
+    await user.destroy();
+    return true;
+  };
+
+async completePasswordReset(token, newPassword) {
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const user = await User.findOne({
+      where: {
+        passwordResetToken: tokenHash,
+        passwordResetExpires: {
+          [require('sequelize').Op.gt]: Date.now(),
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error("Invalid or expired reset token");
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await user.update({
+      passwordHash,
+      isActive: true,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+    });
+
+    return { message: "Password has been reset successfully" };
+  }
   
   
 
