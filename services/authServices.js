@@ -80,7 +80,7 @@ class AuthServices {
 
 async login({ email, password, isAdminLogin = false }) {
 
-  console.log("Login attempt service:", { email });
+  //console.log("Login attempt service:", { email });
 
   const user = await User.findOne({
     where: { email },
@@ -95,6 +95,15 @@ async login({ email, password, isAdminLogin = false }) {
   });
 
   if (!user) throw new Error("Invalid credentials");
+
+  // User must change password first
+  if (!user.isActive) {
+    return {
+      mustChangePassword: true,
+      userId: user.id,
+      email: user.email
+    };
+  }
 
   if (!user.passwordHash) {
     throw new Error("No password set for this account");

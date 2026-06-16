@@ -15,8 +15,23 @@ exports.login = async (req, res) => {
   try {
     console.log("Login attempt controller:", req.body);
     const { email, password } = req.body;
-    const { user, token } = await authService.login({ email, password });
-    res.json({ success: true, user, token });
+     const result = await authService.login({ email, password });
+
+    if (result.mustChangePassword) {
+      return res.status(200).json({
+        success: true,
+        mustChangePassword: true,
+        userId: result.userId,
+        email: result.email
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: result.user,
+      token: result.token,
+      mustChangePassword: false
+    });
   } catch (err) {
     res.status(401).json({ success: false, message: err.message });
   }
