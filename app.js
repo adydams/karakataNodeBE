@@ -193,8 +193,12 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: process.env.BASE_URL || 'http://localhost:5000',
-        description: 'Development server',
+        url: 'http://localhost:5000',
+        description: 'Local Development server',
+      },
+      {
+        url: process.env.BASE_URL || 'https://karakatanodebe.onrender.com',
+        description: 'Production server',
       },
     ],
   },
@@ -245,8 +249,8 @@ app.use('/api/admin', routeLogger('ADMIN'), adminRoutes);
 // 404 HANDLER
 // ============================================
 
-app.all('*path', (req, res) => {
-  console.log("❌ Route Not Found");
+app.all(/.*/, (req, res) => {
+  console.log(`❌ Route Not Found: ${req.method} ${req.originalUrl}`);
 
   res.status(404).json({
     success: false,

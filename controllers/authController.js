@@ -55,17 +55,6 @@ exports.googleCallback = (req, res, next) => {
   })(req, res, next);
 };
 
-exports.changePasswordFirstTime = async (req, res) => {
-  try {
-    const { oldPassword, newPassword } = req.body;
-    const userId = req.user.id;
-    const result = await authService.changePasswordFirstTime(userId, oldPassword, newPassword);
-    res.json({ success: true, message: result.message });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-};
-
 exports.resetPassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;

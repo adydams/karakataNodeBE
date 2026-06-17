@@ -262,22 +262,6 @@ async login({ email, password, isAdminLogin = false }) {
       return { message: "Password updated successfully" };
   }
 
-  async changePasswordFirstTime(userId, oldPassword, newPassword) {
-    const user = await User.findByPk(userId);
-    if (!user) throw new Error("User not found");
-
-    const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
-    if (!isMatch) throw new Error("Old password is incorrect");
-
-    const salt = await bcrypt.genSalt(10);
-    const newPasswordHash = await bcrypt.hash(newPassword, salt);
-
-    user.passwordHash = newPasswordHash;
-    user.isActive = true; // Mark as active after first password change
-    await user.save();
-
-    return { message: "Password updated successfully and account activated" };
-  }
 
 
   async updateUser  (id, updates){
