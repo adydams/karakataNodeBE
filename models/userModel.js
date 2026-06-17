@@ -20,6 +20,8 @@ const sequelize = require('../db/database');
       references: {
         model: "roles",
         key: "id",
+      },
+      onUpdate: "CASCADE",
     },
     // =========================
   // 🔐 PASSWORD RESET FIELDS
@@ -35,9 +37,9 @@ const sequelize = require('../db/database');
       allowNull: true
     },
       
-    onUpdate: "CASCADE",
+   
     //  onDelete: "CASCADE", // ✅ delete users if their role is deleted
-    },
+    
     
   isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
       // provider + providerId for OAuth
