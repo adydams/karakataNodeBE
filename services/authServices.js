@@ -157,7 +157,7 @@ async login({ email, password, isAdminLogin = false }) {
   if (!user) throw new Error("Invalid credentials");
 
   // User must change password first
-  if (!user.isActive) {
+  if (user.isActive == false) {
     return {
       mustVerifyAccount: true,
       userId: user.id,

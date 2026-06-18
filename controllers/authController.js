@@ -47,7 +47,7 @@ exports.login = async (req, res) => {
       success: true,
       user: result.user,
       token: result.token,
-      mustChangePassword: false
+      mustVerifyAccount: false
     });
   } catch (err) {
     res.status(401).json({ success: false, message: err.message });
