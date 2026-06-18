@@ -118,7 +118,7 @@ exports.Adminlogin = async (req, res) => {
     if (result.mustChangePassword) {
       return res.status(200).json({
         success: true,
-        mustChangePassword: true,
+        //mustChangePassword: true,
         userId: result.userId,
         email: result.email
       });
@@ -128,7 +128,7 @@ exports.Adminlogin = async (req, res) => {
       success: true,
       user: result.user,
       token: result.token,
-      mustChangePassword: false
+    //  mustChangePassword: false
     });
   } catch (err) {
     res.status(401).json({ success: false, message: err.message });
@@ -152,8 +152,8 @@ exports.onboardAdmin = async (req, res) => {
 
 
 
-    const { name, email, phone } = req.body;
-    const staticPassword = "Admin@123";
+    const { name, email, phone, password } = req.body;
+    // const staticPassword = "Admin@123";
 
     // ✅ Fetch the Admin roleId from the database
     const adminRole = await Role.findOne({ where: { name: "Admin" } });
@@ -169,7 +169,7 @@ exports.onboardAdmin = async (req, res) => {
       name,
       email,
       phone,
-      password: staticPassword,
+      password: password ,
       roleId: adminRole.id, // Use UUID roleId
     });
 

@@ -27,10 +27,14 @@ const sequelize = require('../db/database');
   // 🔐 PASSWORD RESET FIELDS
   // =========================
 
-    passwordResetToken: {
-      type: DataTypes.STRING(255),
-      allowNull: true
-    },
+      passwordResetToken: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+      },
+    emailVerificationToken: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+      },
 
     passwordResetExpires: {
       type: DataTypes.DATE,
@@ -39,7 +43,7 @@ const sequelize = require('../db/database');
       
    
     //  onDelete: "CASCADE", // ✅ delete users if their role is deleted
-    
+    isEmailVerified: { type: DataTypes.BOOLEAN, defaultValue: false }, 
     
   isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
       // provider + providerId for OAuth

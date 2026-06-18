@@ -52,16 +52,17 @@ class AuthServices {
     id: user.id,
     role: "Customer", // or customerRole.name
   });
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
+  const verifyUrl = `${process.env.API_URL}/api/auth/verify-email?token=${verificationToken}`;
   await emailService.sendEmail({
     to: user.email,
     subject: "Set Your Password",
     html: `
-      <h2>Welcome ${user.name}</h2>
-      <p>Please set your password using the link below:</p>
-      <a href="${resetUrl}">Change Password</a>
-      <p>This link expires in 30 minutes.</p>
+     <h2>Welcome ${user.name}</h2>
+     <p>Verify your account by clicking below:</p>
+     <a href="${verifyUrl}">
+      Verify Account
+     </a>
     `
   });
 
@@ -104,7 +105,38 @@ class AuthServices {
   // }
 
 
- 
+ async verifyEmail(token) {
+
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  const user = await User.findOne({
+    where: {
+      emailVerificationToken: tokenHash
+    }
+  });
+
+  if (!user) {
+    throw new Error("Invalid verification token");
+  }
+
+  if (user.emailVerificationExpires < Date.now()) {
+    throw new Error("Verification token expired");
+  }
+
+  user.isEmailVerified = true;
+  user.emailVerificationToken = null;
+  user.emailVerificationExpires = null;
+  user.isActive = true; // Activate account upon email verification
+
+  await user.save();
+
+  return {
+    message: "Email verified successfully"
+  };
+}
 
 async login({ email, password, isAdminLogin = false }) {
 
@@ -127,7 +159,7 @@ async login({ email, password, isAdminLogin = false }) {
   // User must change password first
   if (!user.isActive) {
     return {
-      mustChangePassword: true,
+     // mustChangePassword: true,
       userId: user.id,
       email: user.email
     };
@@ -192,7 +224,7 @@ async login({ email, password, isAdminLogin = false }) {
           }
         : null
     },
-    mustChangePassword: !user.isActive
+   // mustChangePassword: !user.isActive
   };
 }
 

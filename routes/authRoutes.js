@@ -221,10 +221,40 @@ router.post(
   *       403:
   *         description: Forbidden (inactive user)
   */
-router.post(
-  "/reset-password",
-  ensureActive,
-  authCtrl.resetPassword
-);
+router.post(  "/reset-password",  ensureActive,  authCtrl.resetPassword);
+
+/**
+ * @swagger
+ * /api/auth/verify-email:
+ *   get:
+ *     summary: Verify user email address
+ *     description: Verifies a user's email address using the verification token sent to their email and redirects to the frontend success or failure page.
+ *     tags:
+ *       - Authentication
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Email verification token
+ *     responses:
+ *       302:
+ *         description: Redirects to frontend success or failure page
+ *       400:
+ *         description: Invalid or expired verification token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Verification token expired
+ */
+router.get("/verify-email", authCtrl.verifyEmail);
 
 module.exports = router;

@@ -10,6 +10,23 @@ exports.register = async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    const result = await authService.verifyEmail(token);
+
+    res.status(200).json({
+      success: true,
+      message: result.message
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
 
 exports.login = async (req, res) => {
   try {
@@ -20,7 +37,7 @@ exports.login = async (req, res) => {
     if (result.mustChangePassword) {
       return res.status(200).json({
         success: true,
-        mustChangePassword: true,
+       // mustChangePassword: true,
         userId: result.userId,
         email: result.email
       });
