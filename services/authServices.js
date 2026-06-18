@@ -159,7 +159,7 @@ async login({ email, password, isAdminLogin = false }) {
   // User must change password first
   if (!user.isActive) {
     return {
-     // mustChangePassword: true,
+      mustVerifyAccount: true,
       userId: user.id,
       email: user.email
     };
@@ -224,7 +224,7 @@ async login({ email, password, isAdminLogin = false }) {
           }
         : null
     },
-   // mustChangePassword: !user.isActive
+    mustVerifyAccount: !user.isActive
   };
 }
 

@@ -34,10 +34,10 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
      const result = await authService.login({ email, password });
 
-    if (result.mustChangePassword) {
+    if (result.mustVerifyAccount) {
       return res.status(200).json({
         success: true,
-       // mustChangePassword: true,
+        mustVerifyAccount: true,
         userId: result.userId,
         email: result.email
       });

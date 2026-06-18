@@ -115,10 +115,10 @@ exports.Adminlogin = async (req, res) => {
     const { email, password } = req.body;
      const result = await authService.login({ email, password });
 
-    if (result.mustChangePassword) {
+    if (result.mustVerifyAccount) {
       return res.status(200).json({
         success: true,
-        //mustChangePassword: true,
+        mustVerifyAccount: true,
         userId: result.userId,
         email: result.email
       });
@@ -128,7 +128,7 @@ exports.Adminlogin = async (req, res) => {
       success: true,
       user: result.user,
       token: result.token,
-    //  mustChangePassword: false
+      mustVerifyAccount: false
     });
   } catch (err) {
     res.status(401).json({ success: false, message: err.message });
