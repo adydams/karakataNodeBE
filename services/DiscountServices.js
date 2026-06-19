@@ -1,7 +1,7 @@
 const { Discount } = require("../models");
 const { Op } = require("sequelize");
 
-class DiscountServices {
+class discountServices {
   async validate(code, orderTotal) {
     const discount = await Discount.findOne({
       where: {
@@ -64,4 +64,4 @@ class DiscountServices {
   }
 }
 
-module.exports = new DiscountServices();
+module.exports = new discountServices();
