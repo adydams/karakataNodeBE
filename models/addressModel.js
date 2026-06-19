@@ -15,7 +15,7 @@ const Address = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
-    addressLine1: {
+    addressLine1: { 
       type: DataTypes.STRING,
       allowNull: false,
     },
