@@ -290,6 +290,7 @@ class ProductService {
           ProductImage.create({
             productId: product.id,
             url:       result.secure_url,
+            public_id: result.public_id
           }, { transaction: t })
         ));
       }
