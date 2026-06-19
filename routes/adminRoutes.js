@@ -86,7 +86,7 @@ router.post("/login", adminController.Adminlogin);
  *               phone:
  *                 type: string
  *                 example: "+2348012345678"
- *              password:
+ *               password:
  *                 type: string
  *                 example: "@mysecurepassword"
  *     responses:
