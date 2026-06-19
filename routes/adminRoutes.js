@@ -60,7 +60,7 @@ router.post("/login", adminController.Adminlogin);
  * /api/admin/onboard-admin:
  *   post:
  *     summary: Onboard a new Admin user
- *     description: Allows only a SuperAdmin to onboard a new Admin user. A static password is used temporarily until SMTP is configured.
+ *     description: Allows only a SuperAdmin to onboard a new Admin user.
  *     tags: [Admin Management]
  *     security:
  *       - bearerAuth: []
@@ -88,42 +88,8 @@ router.post("/login", adminController.Adminlogin);
  *                 example: "+2348012345678"
  *               password:
  *                 type: string
+ *                 format: password
  *                 example: "@mysecurepassword"
- *     responses:
- *       201:
- *         description: Admin user onboarded successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Admin user onboarded successfully
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       example: "b1c23d45-e6f7-89ab-cdef-0123456789ab"
- *                     name:
- *                       type: string
- *                       example: Jane Doe
- *                     email:
- *                       type: string
- *                       example: jane.doe@example.com
- *                 token:
- *                   type: string
- *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *       400:
- *         description: Bad request or validation error
- *       403:
- *         description: Forbidden — only SuperAdmin can onboard Admin users
- *       401:
- *         description: Unauthorized — missing or invalid token
  */
 router.post("/onboard-admin",
              auth,
