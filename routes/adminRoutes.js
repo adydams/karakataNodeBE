@@ -74,6 +74,7 @@ router.post("/login", adminController.Adminlogin);
  *               - name
  *               - email
  *               - phone
+ *               - password
  *             properties:
  *               name:
  *                 type: string
@@ -85,6 +86,9 @@ router.post("/login", adminController.Adminlogin);
  *               phone:
  *                 type: string
  *                 example: "+2348012345678"
+ *              password:
+ *                 type: string
+ *                 example: "@mysecurepassword"
  *     responses:
  *       201:
  *         description: Admin user onboarded successfully
