@@ -24,9 +24,9 @@ const Permission = require("./permissionModel");
 const Address = require("./addressModel");
 const StorePickupStation = require("./StorePickupStation");
 const AuditLog = require("./auditLogModel");
-const Discount = require("./discountModel");
+const Discount = require("./DiscountModel");
 const Inventory = require("./inventoryModel");
-const Notification = require("./notificationModel");
+const Notification = require("./notificationModels");
 
 // Validate that all imports are proper Sequelize models
 const models = {
@@ -213,13 +213,6 @@ try {
 
 
   // ================= INVENTORY =================
-  // One product has exactly one inventory record (per the
-  // "atomic creation" pattern from productServices.create).
-  // If you later support per-store inventory for the same
-  // product, swap this to hasMany/belongsTo on storeId+productId.
-  Product.hasOne(Inventory, { foreignKey: "productId", as: "inventory", onDelete: "CASCADE" });
-  Inventory.belongsTo(Product, { foreignKey: "productId", as: "product" });
-
   Store.hasMany(Inventory, { foreignKey: "storeId", as: "inventories" });
   Inventory.belongsTo(Store, { foreignKey: "storeId", as: "store" });
 
