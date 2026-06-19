@@ -4,7 +4,7 @@ const PaymentService = require("./paymentServices");
 const LogisticsService = require("./logisticsService");
 const InventoryService = require("./inventoryServices");
 const NotificationService = require("./notificationServices");
-const DiscountService = require("./discountServices");
+const DiscountService = require("./DiscountServices");
 const ShipBubbleAdapter = require("./ShipBubbles/shipbubbleAdapter"); // ✅ was missing
 
 class OrderServices {
