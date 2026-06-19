@@ -24,7 +24,9 @@ const Permission = require("./permissionModel");
 const Address = require("./addressModel");
 const StorePickupStation = require("./StorePickupStation");
 const AuditLog = require("./auditLogModel");
-
+const Discount = require("./discountModel");
+const Inventory = require("./inventoryModel");
+const Notification = require("./notificationModel");
 
 // Validate that all imports are proper Sequelize models
 const models = {
@@ -47,6 +49,9 @@ const models = {
   Role,
   Permission,
   AuditLog,
+  Discount,
+  Inventory,
+  Notification
 };
 
 // Check each model
@@ -66,6 +71,15 @@ try {
   // Product ↔ ProductImage
   Product.hasMany(ProductImage, { foreignKey: "productId", as: "images", onDelete: "CASCADE" });
   ProductImage.belongsTo(Product, { foreignKey: "productId", as: "product" });
+
+    // ================= INVENTORY =================
+  // One product has exactly one inventory record (per the
+  // "atomic creation" pattern from productServices.create).
+  // If you later support per-store inventory for the same
+  // product, swap this to hasMany/belongsTo on storeId+productId.
+  Product.hasOne(Inventory, { foreignKey: "productId", as: "inventory", onDelete: "CASCADE" });
+  Inventory.belongsTo(Product, { foreignKey: "productId", as: "product" });
+
 
   // Product ↔ Favorite
   Product.hasMany(Favorite, { foreignKey: "productId", as: "favorites" });
@@ -197,6 +211,40 @@ try {
   AuditLog.belongsTo(User, { foreignKey: "userId", as: "user" });
   //console.log('✓ All model associations created successfully');
 
+
+  // ================= INVENTORY =================
+  // One product has exactly one inventory record (per the
+  // "atomic creation" pattern from productServices.create).
+  // If you later support per-store inventory for the same
+  // product, swap this to hasMany/belongsTo on storeId+productId.
+  Product.hasOne(Inventory, { foreignKey: "productId", as: "inventory", onDelete: "CASCADE" });
+  Inventory.belongsTo(Product, { foreignKey: "productId", as: "product" });
+
+  Store.hasMany(Inventory, { foreignKey: "storeId", as: "inventories" });
+  Inventory.belongsTo(Store, { foreignKey: "storeId", as: "store" });
+
+  // ================= DISCOUNT =================
+  // Discount is applied at checkout and stored as a snapshot
+  // (discountCode/discountAmount columns) on Order, not as a
+  // hard FK — so a discount can be edited/deleted later without
+  // breaking historical orders. We still keep an optional FK
+  // association for admin-side querying ("which orders used X code").
+  Discount.hasMany(Order, { foreignKey: "discountId", as: "orders" });
+  Order.belongsTo(Discount, { foreignKey: "discountId", as: "discount" });
+
+  User.hasMany(Discount, { foreignKey: "createdBy", as: "createdDiscounts" });
+  Discount.belongsTo(User, { foreignKey: "createdBy", as: "creator" });
+
+  // ================= NOTIFICATION =================
+  // Notifications always belong to a user (recipient).
+  // Optionally linked to an order for deep-linking
+  // ("View Order" from a push/in-app notification).
+  User.hasMany(Notification, { foreignKey: "userId", as: "notifications" });
+  Notification.belongsTo(User, { foreignKey: "userId", as: "user" });
+
+  Order.hasMany(Notification, { foreignKey: "orderId", as: "notifications" });
+  Notification.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+
 } catch (error) {
   console.error('Error creating model associations:', error);
   throw error;
@@ -222,5 +270,8 @@ module.exports = {
   Permission,
   SubCategory,
   Store,
-  AuditLog
+  AuditLog,
+  Discount,
+  Inventory,
+  Notification,
 };
