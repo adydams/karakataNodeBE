@@ -223,17 +223,21 @@ class ProductService {
 
       // ── 3. Upload images (if any) ──────────────
       if (files && files.length > 0) {
-        const uploadPromises = files.map(file =>
-          cloudinary.uploader.upload(file.path, { folder: "products" })
-        );
-        const uploaded = await Promise.all(uploadPromises);
-
-        await Promise.all(uploaded.map(result =>
-          ProductImage.create({
+       for (const file of files) {
+          const result = await cloudinary.uploader.upload(file.path, {
+            folder: "products",
+          });
+          console.log("Uploaded image:", result.secure_url, result.public_id);
+          productImages.push({
             productId: product.id,
-            url:       result.secure_url,
-          }, { transaction: t })
-        ));
+            url: result.secure_url,
+            public_id: result.public_id,
+          });
+
+        
+        }
+        await ProductImage.bulkCreate(productImages, { transaction: t });
+
       }
 
       

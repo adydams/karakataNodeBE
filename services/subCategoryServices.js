@@ -27,6 +27,15 @@ class SubCategoryServices {
     });
   }
 
+  // ✅ Get SubCategories by Category ID
+  static async getSubCategoriesByCategory(categoryId) {
+    return await SubCategory.findAll({
+      where: { categoryId, isDeleted: false },
+      include: [{ model: Category, as: 'category' }],
+      order: [['name', 'ASC']],
+    });
+  }
+
   // ✅ Get SubCategory by ID
   static async getSubCategoryById(id) {
     return await SubCategory.findOne({

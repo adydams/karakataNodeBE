@@ -96,44 +96,60 @@ class CategoryServices {
   // }
 
 
-  async getCategoryById(id) {
-    return await Category.findByPk(id, {
-      attributes: {
-        include: [
-          [fn('COUNT', col('subCategories.products.id')), 'totalProducts'],
-
-         [
-            literal(`(
-              SELECT pi.url
-              FROM products p
-              INNER JOIN product_images pi ON pi.productId = p.id
-              INNER JOIN subcategories sc ON sc.id = p.subCategoryId
-              WHERE sc.categoryId = Category.id
-              ORDER BY p.createdAt DESC
-              LIMIT 1
-            )`),
-            'categoryImage'
-          ]
-       
-        ]
-      },
+  
+async getCategoryById(id) {
+  return await Category.findByPk(id, {
+    attributes: {
       include: [
-        {
-          model: SubCategory,
-          as: 'subCategories',
-          attributes: [],
-          include: [
-            {
-              model: Product,
-              as: 'products',
-              attributes: []
-            }
-          ]
-        }
-      ],
-      group: ['Category.id']
-    });
-  }
+        [
+          fn("COUNT", col("subCategories.products.id")),
+          "totalProducts"
+        ],
+        [
+          literal(`(
+            SELECT pi.url
+            FROM products p
+            INNER JOIN product_images pi ON pi.productId = p.id
+            INNER JOIN subcategories sc ON sc.id = p.subCategoryId
+            WHERE sc.categoryId = Category.id
+            ORDER BY p.createdAt DESC
+            LIMIT 1
+          )`),
+          "categoryImage"
+        ]
+      ]
+    },
+    include: [
+      {
+        model: SubCategory,
+        as: "subCategories",
+        attributes: [
+          "id",
+          "name",
+          "description",
+          "isDeleted",
+          "createdAt",
+          "updatedAt"
+        ],
+        where: {
+          isDeleted: false
+        },
+        required: false,
+        include: [
+          {
+            model: Product,
+            as: "products",
+            attributes: []
+          }
+        ]
+      }
+    ],
+    group: [
+      "Category.id",
+      "subCategories.id"
+    ]
+  });
+}
 
 
   // Update category

@@ -63,7 +63,7 @@ const upload = multer({ dest: "uploads/" });
 router.post("/", upload.array("images", 5), ProductController.create);
 
 /**
- * @swagger
+ * @swagger 
  * /api/products:
  *   get:
  *     summary: Get all products

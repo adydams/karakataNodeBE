@@ -55,6 +55,25 @@ router.get('/', SubCategoryController.getAll);
 
 /**
  * @swagger
+ * /api/subcategories/by-category/{categoryId}:
+ *   get:
+ *     summary: Get all subcategories by category ID
+ *     tags: [SubCategories]
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: List of subcategories for the category
+ */
+router.get('/by-category/:categoryId', SubCategoryController.getByCategoryId);
+
+/**
+ * @swagger
  * /api/subcategories/{id}:
  *   get:
  *     summary: Get subcategory by ID

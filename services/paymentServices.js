@@ -6,7 +6,7 @@ const { sequelize , Order, Payment, User} = require('../models');
 class PaymentServices {
 
   async initialize({ order, user, gateway, redirectUrl }) {
-    //console.log("🚀 Initializing payment...");
+     //console.log("🚀 Initializing payment...");
     //console.log("Gateway:", gateway);
     //console.log("Order ID:", order.id);
     //console.log("User email:", user.email);

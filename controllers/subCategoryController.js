@@ -21,6 +21,20 @@ class SubCategoryController {
     }
   }
 
+  // Get SubCategories by Category ID
+  static async getByCategoryId(req, res) {
+    try {
+      const { categoryId } = req.params;
+      const subCategories = await SubCategoryService.getSubCategoriesByCategory(categoryId);
+      if (subCategories.length === 0) {
+        return res.status(404).json({ success: false, message: 'No subcategories found for this category' });
+      }
+      res.status(200).json({ success: true, count: subCategories.length, data: subCategories });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   // Get SubCategory by ID
   static async getById(req, res) {
     try {
