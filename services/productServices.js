@@ -182,7 +182,7 @@
 // module.exports = new ProductServices();
 
 
-const { sequelize, Product, ProductImage, Inventory } = require("../models");
+const { sequelize, Product, ProductImage, Inventory, StorePickupStation } = require("../models");
 const QRCode = require("qrcode");
 const cloudinary = require("../config/cloudinary");
 
@@ -261,8 +261,11 @@ class ProductService {
       await t.commit();
       // Return full product with images
       return Product.findByPk(product.id, {
-        include: [{ model: ProductImage, as: "images", attributes: ["url"] }],
-      });
+              include: [
+                { model: ProductImage, as: "images", attributes: ["url"] },
+                { model: StorePickupStation, as: "pickupStations", attributes: ["id", "name", "address"] }
+              ],
+            });
 
     } catch (err) {
       await t.rollback();
@@ -311,8 +314,11 @@ class ProductService {
 
       await t.commit();
       return Product.findByPk(id, {
-        include: [{ model: ProductImage, as: "images", attributes: ["url"] }],
-      });
+              include: [
+                { model: ProductImage, as: "images", attributes: ["url"] },
+                { model: StorePickupStation, as: "pickupStations", attributes: ["id", "name", "address"] }
+              ],
+            });
 
     } catch (err) {
       await t.rollback();
@@ -323,7 +329,10 @@ class ProductService {
   async getAllProducts() {
     return Product.findAll({
       where: { isDeleted: false },
-      include: [{ model: ProductImage, as: "images", attributes: ["url"] }],
+      include: [
+        { model: ProductImage, as: "images", attributes: ["url"] },
+        { model: StorePickupStation, as: "pickupStations", attributes: ["id", "name", "address"] }
+      ],
       order: [["createdAt", "DESC"]],
     });
   }
@@ -331,7 +340,10 @@ class ProductService {
   async getProductById(id) {
     return Product.findOne({
       where: { id, isDeleted: false },
-      include: [{ model: ProductImage, as: "images", attributes: ["url"] }],
+      include: [
+        { model: ProductImage, as: "images", attributes: ["url"] },
+        { model: StorePickupStation, as: "pickupStations", attributes: ["id", "name", "address"] }
+      ],
     });
   }
 
