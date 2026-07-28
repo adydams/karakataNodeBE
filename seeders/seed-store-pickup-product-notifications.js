@@ -136,19 +136,25 @@ const seedStorePickupProductNotifications = async () => {
     // 7) Link product to pickup stations (many-to-many)
     // setPickupStations is available from associations in models/index.js
     // Use raw association method with transaction
-    if (typeof product.setPickupStations === 'function') {
-      await product.setPickupStations([ps1.id, ps2.id], { transaction: t });
-    } else {
-      // fallback: insert into join table directly
-      await sequelize.query(
-        `INSERT INTO product_pickup_stations ("productId","pickupStationId","createdAt","updatedAt") VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        { replacements: [product.id, ps1.id], transaction: t }
-      );
-      await sequelize.query(
-        `INSERT INTO product_pickup_stations ("productId","pickupStationId","createdAt","updatedAt") VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        { replacements: [product.id, ps2.id], transaction: t }
-      );
-    }
+    // Insert into product_pickup_stations in a way that tolerates different schemas
+    const insertJoin = async (pId, sId) => {
+      // Try inserting with an explicit id column first (for schemas that have it)
+      try {
+        await sequelize.query(
+          'INSERT INTO product_pickup_stations (`id`, `productId`, `pickupStationId`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+          { replacements: [crypto.randomUUID(), pId, sId], transaction: t }
+        );
+      } catch (err) {
+        // If 'id' doesn't exist, fall back to inserting without it
+        await sequelize.query(
+          'INSERT INTO product_pickup_stations (`productId`, `pickupStationId`, `createdAt`, `updatedAt`) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+          { replacements: [pId, sId], transaction: t }
+        );
+      }
+    };
+
+    await insertJoin(product.id, ps1.id);
+    await insertJoin(product.id, ps2.id);
 
     // 8) Notifications for the owner user (one general, one low-stock if threshold close)
     await Notification.create({
