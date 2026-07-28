@@ -120,19 +120,18 @@ const seedStorePickupProductNotifications = async () => {
     });
 
     // 6) Inventory for product at store
-    await Inventory.findOrCreate({
-      where: { productId: product.id, storeId: store.id },
-      defaults: {
-        id: crypto.randomUUID(),
-        productId: product.id,
-        storeId: store.id,
-        // satisfy DB that requires pickupStationId (if present)
-        pickupStationId: ps1.id,
-        quantityOnHand: 25,
-        lowStockThreshold: 5,
-      },
-      transaction: t,
-    });
+    // Use raw SQL to insert inventory including pickupStationId to satisfy DB constraints
+    const [existingInventory] = await sequelize.query(
+      'SELECT id FROM inventories WHERE productId = ? AND storeId = ? LIMIT 1',
+      { replacements: [product.id, store.id], transaction: t }
+    );
+
+    if (!existingInventory || existingInventory.length === 0) {
+      await sequelize.query(
+        'INSERT INTO inventories (`id`, `productId`, `storeId`, `pickupStationId`, `quantityOnHand`, `lowStockThreshold`, `isDeleted`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+        { replacements: [crypto.randomUUID(), product.id, store.id, ps1.id, 25, 5, false], transaction: t }
+      );
+    }
 
     // 7) Link product to pickup stations (many-to-many)
     // setPickupStations is available from associations in models/index.js
