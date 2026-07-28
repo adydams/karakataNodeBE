@@ -126,6 +126,8 @@ const seedStorePickupProductNotifications = async () => {
         id: crypto.randomUUID(),
         productId: product.id,
         storeId: store.id,
+        // satisfy DB that requires pickupStationId (if present)
+        pickupStationId: ps1.id,
         quantityOnHand: 25,
         lowStockThreshold: 5,
       },
