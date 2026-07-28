@@ -50,6 +50,10 @@ const upload = multer({ dest: "uploads/" });
  *               brandId:
  *                 type: string
  *                 nullable: true
+ *               pickupStationIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               images:
  *                 type: array
  *                 items:
@@ -112,6 +116,25 @@ router.get("/:id", ProductController.getById);
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               stockQuantity:
+ *                 type: integer
+ *               categoryId:
+ *                 type: string
+ *               subCategoryId:
+ *                 type: string
+ *               brandId:
+ *                 type: string
+ *               pickupStationIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *     responses:
  *       200:
  *         description: Product updated successfully

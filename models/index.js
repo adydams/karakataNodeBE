@@ -158,14 +158,19 @@ try {
     as: "store",
   });
 
-  StorePickupStation.hasMany(Product, {
+  // Many-to-many: products <-> store pickup stations via join table
+  StorePickupStation.belongsToMany(Product, {
+    through: "product_pickup_stations",
     foreignKey: "pickupStationId",
+    otherKey: "productId",
     as: "products",
   });
 
-  Product.belongsTo(StorePickupStation, {
-    foreignKey: "pickupStationId",
-    as: "pickupStation",
+  Product.belongsToMany(StorePickupStation, {
+    through: "product_pickup_stations",
+    foreignKey: "productId",
+    otherKey: "pickupStationId",
+    as: "pickupStations",
   });
 
   Payment.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });

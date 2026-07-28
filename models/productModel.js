@@ -70,10 +70,6 @@ const Product = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true
     },
-    pickupStationId: {
-        type: DataTypes.UUID,
-        allowNull: true
-      },
     qrCode: {
       type: DataTypes.TEXT("long"), // Cloudinary URL or Base64
     },

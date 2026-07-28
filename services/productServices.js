@@ -207,7 +207,6 @@ class ProductService {
         widthCm:             data.widthCm  || null,
         heightCm:            data.heightCm || null,
         logisticsCategoryId: data.logisticsCategoryId || null,
-        pickupStationId:     data.pickupStationId || null,
       }, { transaction: t });
 
       // ── 2. Create inventory record ─────────────
@@ -253,6 +252,12 @@ class ProductService {
         { transaction: t }
       );
 
+      // Sync pickup stations (many-to-many) if provided as an array of IDs
+      if (data.pickupStationIds && Array.isArray(data.pickupStationIds) && data.pickupStationIds.length > 0) {
+        // product.setPickupStations is provided by the belongsToMany association
+        await product.setPickupStations(data.pickupStationIds, { transaction: t });
+      }
+
       await t.commit();
       // Return full product with images
       return Product.findByPk(product.id, {
@@ -297,6 +302,11 @@ class ProductService {
             public_id: result.public_id
           }, { transaction: t }) 
         ));
+      }
+
+      // Sync pickup stations if provided (array of pickup station IDs)
+      if (data.pickupStationIds && Array.isArray(data.pickupStationIds)) {
+        await product.setPickupStations(data.pickupStationIds, { transaction: t });
       }
 
       await t.commit();
