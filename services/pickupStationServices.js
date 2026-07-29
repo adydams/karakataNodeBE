@@ -1,76 +1,65 @@
-const { Store, StorePickupStation } = require("../models");
+const { Store, StorePickupStation, ProductPickupStation, Inventory, Product } = require("../models");
 const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapter");
+const InventoryService = require("./inventoryServices");
+const sequelize = require("../db/database");
 
 class PickupStationServices {
   async createPickupStation(data) {
-  const store = await Store.findByPk(data.storeId);
+    const store = await Store.findByPk(data.storeId);
 
-  if (!store) {
-    throw new Error("Store not found");
-  }
+    if (!store) {
+      throw new Error("Store not found");
+    }
 
-  const exists =
-    await StorePickupStation.findOne({
-        where: {
-            storeId: data.storeId,
-            name: data.name,
-            isDeleted: false,
-        },
+    const exists = await StorePickupStation.findOne({
+      where: {
+        storeId: data.storeId,
+        name: data.name,
+        isDeleted: false,
+      },
     });
 
-if (exists) {
-    throw new Error(
-        "Pickup station name already exists"
-    );
-}
+    if (exists) {
+      throw new Error("Pickup station name already exists");
+    }
 
-  try {
-    const result =
-      await ShipBubbleAdapter.validateAddress({
+    try {
+      const result = await ShipBubbleAdapter.validateAddress({
         name: data.contactPerson || store.name,
         email: store.email,
         phone: data.phone,
         address: data.address,
       });
       if (!result?.address_code) {
-    throw new Error(
-        "This address is invalid. Please check the address details."
-    );
-}
+        throw new Error("This address is invalid. Please check the address details.");
+      }
+      data.shipbubbleAddressCode = result.address_code;
+    } catch (error) {
+      throw new Error(error.message || "Unable to validate pickup station address");
+    }
 
-    data.shipbubbleAddressCode =   result.address_code;
-  } catch (error) {
-    throw new Error(
-      error.message ||
-      "Unable to validate pickup station address"
-    );
-  }
-
-  const existingStations =
-    await StorePickupStation.count({
+    const existingStations = await StorePickupStation.count({
       where: {
         storeId: data.storeId,
         isDeleted: false,
       },
     });
 
-  if (existingStations === 0) {
-    data.isDefault = true;
-  }
+    if (existingStations === 0) {
+      data.isDefault = true;
+    }
 
-  if (data.isDefault === true) {
-    await StorePickupStation.update(
-      { isDefault: false },
-      {
-        where: {
-          storeId: data.storeId,
-        },
-      }
-    );
-  }
+    if (data.isDefault === true) {
+      await StorePickupStation.update(
+        { isDefault: false },
+        {
+          where: { storeId: data.storeId },
+        }
+      );
+    }
 
-  return await StorePickupStation.create(data);
-}
+    return await StorePickupStation.create(data);
+  }
 
   async getAllPickupStations() {
     return await StorePickupStation.findAll({
@@ -107,76 +96,97 @@ if (exists) {
     });
   }
 
-    async updatePickupStation(id, data) {
+  async updatePickupStation(id, data) {
     const station = await StorePickupStation.findByPk(id);
 
     if (!station) {
-        return null;
+      return null;
     }
 
     if (data.isDefault === true) {
-        await StorePickupStation.update(
+      await StorePickupStation.update(
         { isDefault: false },
         {
-            where: {
+          where: {
             storeId: station.storeId,
-            },
+          },
         }
-        );
+      );
     }
 
-    // Address changed → revalidate
-    if (
-        data.address &&
-        data.address !== station.address
-    ) {
-        const store = await Store.findByPk(station.storeId);
-
-        try{
-                const result = await ShipBubbleAdapter.validateAddress({
-                name: data.contactPerson || station.contactPerson || store.name,
-                email: store.email,
-                phone: data.phone || station.phone,
-                address: data.address,
-                });
-                } catch (error) {
-            throw new Error(
-                error.message ||
-                "Unable to validate pickup station address"
-            );
-        }
-
+    if (data.address && data.address !== station.address) {
+      const store = await Store.findByPk(station.storeId);
+      try {
+        const result = await ShipBubbleAdapter.validateAddress({
+          name: data.contactPerson || station.contactPerson || store.name,
+          email: store.email,
+          phone: data.phone || station.phone,
+          address: data.address,
+        });
         data.shipbubbleAddressCode = result.address_code;
+      } catch (error) {
+        throw new Error(error.message || "Unable to validate pickup station address");
+      }
     }
 
     return await station.update(data);
-    }
+  }
 
   async deletePickupStation(id) {
     const station = await StorePickupStation.findByPk(id, {
-      where: {
-        id,
-        isDeleted: false
-      }
+      where: { id, isDeleted: false }
     });
 
     if (!station) {
       return null;
     }
-    if (data.isDefault === true) {
-    await StorePickupStation.update(
-        { isDefault: false },
-        {
-            where: {
-                storeId: data.storeId,
-            },
-        }
-    );  
-}
-    await station.update({
-        isDeleted: true,
-        });
+    await station.update({ isDeleted: true });
     return station;
+  }
+
+  async assignProductToStation(productId, stationId, initialStock = 0) {
+    const t = await sequelize.transaction();
+    try {
+      const [productStation] = await ProductPickupStation.findOrCreate({
+        where: { productId, pickupStationId: stationId },
+        defaults: { productId, pickupStationId: stationId },
+        transaction: t
+      });
+
+      const [inventory] = await Inventory.findOrCreate({
+        where: { productPickupStationId: productStation.id },
+        defaults: {
+          productId,
+          productPickupStationId: productStation.id,
+          quantityOnHand: initialStock,
+          lowStockThreshold: 10
+        },
+        transaction: t
+      });
+
+      if (inventory.quantityOnHand !== initialStock) {
+        await inventory.update({ quantityOnHand: initialStock }, { transaction: t });
+      }
+
+      await Product.update(
+        { stockQuantity: sequelize.literal(`stockQuantity + ${initialStock}`) },
+        { where: { id: productId }, transaction: t }
+      );
+
+      await t.commit();
+      return { productStation, inventory };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  }
+
+  async updateStationStock(productPickupStationId, newQuantity) {
+    const inventory = await Inventory.findOne({ where: { productPickupStationId } });
+    if (!inventory) throw new Error("Inventory record not found");
+
+    const delta = newQuantity - inventory.quantityOnHand;
+    return await InventoryService.adjustStationStock(productPickupStationId, delta);
   }
 }
 

@@ -1,5 +1,3 @@
-
-
 // models/index.js
 const { Sequelize, DataTypes } = require("sequelize");
 const sequelize = require("../db/database");
@@ -18,7 +16,6 @@ const Brand = require("./brandModel");
 const SubCategory = require("./subCategoryModel");
 const Store = require("./storeModel");
 const Payment = require("./paymentModel");
-//const ShippingAddress = require("./shippingAddressModel");
 const Role = require("./roleModel");
 const Permission = require("./permissionModel");
 const Address = require("./addressModel");
@@ -27,6 +24,16 @@ const AuditLog = require("./auditLogModel");
 const Discount = require("./DiscountModel");
 const Inventory = require("./inventoryModel");
 const Notification = require("./notificationModels");
+const ProductPickupStation = require("./productPickupStationModel");
+const OrderItemFulfillment = require("./orderItemFulfillmentModel");
+const Shipment = require("./shipmentModel");
+
+// Marketplace Models
+const SystemSetting = require("./systemSettingModel");
+const Wallet = require("./walletModel");
+const WalletTransaction = require("./walletTransactionModel");
+const Payout = require("./payoutModel");
+const ReturnRequest = require("./returnRequestModel");
 
 // Validate that all imports are proper Sequelize models
 const models = {
@@ -40,7 +47,6 @@ const models = {
   OrderItem,
   User,
   Payment,
- // ShippingAddress,
   Brand,
   SubCategory,
   Store,
@@ -51,7 +57,15 @@ const models = {
   AuditLog,
   Discount,
   Inventory,
-  Notification
+  Notification,
+  ProductPickupStation,
+  OrderItemFulfillment,
+  Shipment,
+  SystemSetting,
+  Wallet,
+  WalletTransaction,
+  Payout,
+  ReturnRequest,
 };
 
 // Check each model
@@ -59,7 +73,6 @@ Object.entries(models).forEach(([name, model]) => {
   if (!model || typeof model.hasMany !== 'function') {
     throw new Error(`${name} is not a valid Sequelize model. Check the export in ${name.toLowerCase()}Model.js`);
   }
-  //console.log(`✓ ${name} model loaded successfully`);
 });
 
 // ================= ASSOCIATIONS =================
@@ -72,20 +85,18 @@ try {
   Product.hasMany(ProductImage, { foreignKey: "productId", as: "images", onDelete: "CASCADE" });
   ProductImage.belongsTo(Product, { foreignKey: "productId", as: "product" });
 
-    // ================= INVENTORY =================
-  // One product has exactly one inventory record (per the
-  // "atomic creation" pattern from productServices.create).
-  // If you later support per-store inventory for the same
-  // product, swap this to hasMany/belongsTo on storeId+productId.
-  Product.hasOne(Inventory, { foreignKey: "productId", as: "inventory", onDelete: "CASCADE" });
+  // ================= INVENTORY =================
+  Product.hasMany(Inventory, { foreignKey: "productId", as: "inventories", onDelete: "CASCADE" });
   Inventory.belongsTo(Product, { foreignKey: "productId", as: "product" });
 
+  StorePickupStation.hasMany(Inventory, { foreignKey: "pickupStationId", as: "inventories" });
+  Inventory.belongsTo(StorePickupStation, { foreignKey: "pickupStationId", as: "pickupStation" });
 
   // Product ↔ Favorite
   Product.hasMany(Favorite, { foreignKey: "productId", as: "favorites" });
   Favorite.belongsTo(Product, { foreignKey: "productId", as: "product" });
 
-  // User ↔ Favorite (assuming users can have favorites)
+  // User ↔ Favorite
   User.hasMany(Favorite, { foreignKey: "userId", as: "favorites" });
   Favorite.belongsTo(User, { foreignKey: "userId", as: "user" });
 
@@ -109,6 +120,11 @@ try {
   Order.hasMany(OrderItem, { foreignKey: "orderId", as: "items", onDelete: "CASCADE" });
   OrderItem.belongsTo(Order, { foreignKey: "orderId", as: "order" });
 
+  OrderItem.hasMany(OrderItemFulfillment, { foreignKey: "orderItemId", as: "fulfillments" });
+  OrderItemFulfillment.belongsTo(OrderItem, { foreignKey: "orderItemId", as: "orderItem" });
+  OrderItemFulfillment.belongsTo(StorePickupStation, { foreignKey: "pickupStationId", as: "pickupStation" });
+  OrderItem.belongsTo(StorePickupStation, { foreignKey: "pickupStationId", as: "pickupStation" });
+
   // OrderItem ↔ Product
   OrderItem.belongsTo(Product, { foreignKey: "productId", as: "product" });
   Product.hasMany(OrderItem, { foreignKey: "productId", as: "orderItems" });
@@ -117,16 +133,13 @@ try {
   Brand.hasMany(Product, { as: "products", foreignKey: "brandId" });
   Product.belongsTo(Brand, { foreignKey: "brandId", as: "brand" });
 
-
   // Category ↔ SubCategory
   Category.hasMany(SubCategory, { as: "subcategories", foreignKey: "categoryId" });
   SubCategory.belongsTo(Category, { foreignKey: "categoryId", as: "parentCategory" });
 
-
   // SubCategory ↔ Product
   SubCategory.hasMany(Product, { as: "products", foreignKey: "subCategoryId" });
   Product.belongsTo(SubCategory, { foreignKey: "subCategoryId", as: "subcategory" });
-
 
   // Store ↔ User (owner)
   Store.belongsTo(User, {
@@ -144,7 +157,7 @@ try {
     as: "store",
   });
 
- // Product ↔ Store (nullable)
+  // Product ↔ Store (nullable)
   Store.hasMany(Product, { as: "products", foreignKey: "storeId" });
   Product.belongsTo(Store, { as: "store", foreignKey: "storeId" });
 
@@ -158,10 +171,23 @@ try {
     as: "store",
   });
 
-  StorePickupStation.hasMany(Product, {
+  Product.belongsToMany(StorePickupStation, {
+    through: ProductPickupStation,
+    foreignKey: "productId",
+    otherKey: "pickupStationId",
+    as: "pickupStations",
+  });
+
+  StorePickupStation.belongsToMany(Product, {
+    through: ProductPickupStation,
     foreignKey: "pickupStationId",
+    otherKey: "productId",
     as: "products",
   });
+
+  ProductPickupStation.belongsTo(Product, { foreignKey: "productId" });
+  ProductPickupStation.belongsTo(StorePickupStation, { foreignKey: "pickupStationId", as: "station" });
+  ProductPickupStation.hasOne(Inventory, { foreignKey: "pickupStationId", sourceKey: "pickupStationId", as: "inventory" });
 
   Product.belongsTo(StorePickupStation, {
     foreignKey: "pickupStationId",
@@ -172,56 +198,38 @@ try {
   Order.hasOne(models.Payment, { foreignKey: "orderId", as: "payment" });
   Payment.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
 
-  // Order.hasOne(models.ShippingAddress, { foreignKey: "orderId", as: "shippingAddress" });
-  // ShippingAddress.belongsTo(models.Order, { foreignKey: "orderId", as: "order",  onDelete: 'SET NULL', });
-  // ShippingAddress.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
-   
-
   User.hasMany(Address, { foreignKey: "userId", as: "addresses" });
-    Address.belongsTo(User, { foreignKey: "userId", as: "user" });
-   
-    Address.hasMany(Order, { foreignKey: "shippingAddressId", as: "orders" });
+  Address.belongsTo(User, { foreignKey: "userId", as: "user" });
 
+  Address.hasMany(Order, { foreignKey: "shippingAddressId", as: "orders" });
   Order.belongsTo(Address, { foreignKey: "shippingAddressId", as: "shippingAddress" });
-    Role.belongsToMany(Permission, {
-      through: "RolePermissions",
-      foreignKey: "roleId",
-      as: "permissions",
-    });
+
+  Role.belongsToMany(Permission, {
+    through: "RolePermissions",
+    foreignKey: "roleId",
+    as: "permissions",
+  });
   Permission.belongsToMany(Role, {
-      through: "RolePermissions",
-      foreignKey: "permissionId",
-      as: "roles",
-    });
-    
+    through: "RolePermissions",
+    foreignKey: "permissionId",
+    as: "roles",
+  });
 
-   User.hasMany(Permission, {
-      foreignKey: "createdBy",
-      as: "createdPermissions",
-    });
+  User.hasMany(Permission, {
+    foreignKey: "createdBy",
+    as: "createdPermissions",
+  });
 
-    Permission.belongsTo(User, {
-      foreignKey: "createdBy",
-      as: "creator",
-    }); 
+  Permission.belongsTo(User, {
+    foreignKey: "createdBy",
+    as: "creator",
+  });
 
- // 🟢 User ↔ Role (one-to-many)
   Role.hasMany(User, { foreignKey: "roleId", as: "users" });
   User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
   AuditLog.belongsTo(User, { foreignKey: "userId", as: "user" });
-  //console.log('✓ All model associations created successfully');
-
-
-  // ================= INVENTORY =================
-  Store.hasMany(Inventory, { foreignKey: "storeId", as: "inventories" });
-  Inventory.belongsTo(Store, { foreignKey: "storeId", as: "store" });
 
   // ================= DISCOUNT =================
-  // Discount is applied at checkout and stored as a snapshot
-  // (discountCode/discountAmount columns) on Order, not as a
-  // hard FK — so a discount can be edited/deleted later without
-  // breaking historical orders. We still keep an optional FK
-  // association for admin-side querying ("which orders used X code").
   Discount.hasMany(Order, { foreignKey: "discountId", as: "orders" });
   Order.belongsTo(Discount, { foreignKey: "discountId", as: "discount" });
 
@@ -229,14 +237,73 @@ try {
   Discount.belongsTo(User, { foreignKey: "createdBy", as: "creator" });
 
   // ================= NOTIFICATION =================
-  // Notifications always belong to a user (recipient).
-  // Optionally linked to an order for deep-linking
-  // ("View Order" from a push/in-app notification).
   User.hasMany(Notification, { foreignKey: "userId", as: "notifications" });
   Notification.belongsTo(User, { foreignKey: "userId", as: "user" });
 
   Order.hasMany(Notification, { foreignKey: "orderId", as: "notifications" });
   Notification.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+
+  // ================= MARKETPLACE & WALLET =================
+
+  // Wallet ↔ Store
+  Store.hasOne(Wallet, { foreignKey: "storeId", as: "wallet" });
+  Wallet.belongsTo(Store, { foreignKey: "storeId", as: "store" });
+
+  // WalletTransaction ↔ Wallet
+  Wallet.hasMany(WalletTransaction, { foreignKey: "walletId", as: "transactions" });
+  WalletTransaction.belongsTo(Wallet, { foreignKey: "walletId", as: "wallet" });
+
+  // WalletTransaction ↔ Store
+  Store.hasMany(WalletTransaction, { foreignKey: "storeId", as: "walletTransactions" });
+  WalletTransaction.belongsTo(Store, { foreignKey: "storeId", as: "store" });
+
+  // WalletTransaction ↔ OrderItem
+  OrderItem.hasMany(WalletTransaction, { foreignKey: "orderItemId", as: "walletTransactions" });
+  WalletTransaction.belongsTo(OrderItem, { foreignKey: "orderItemId", as: "orderItem" });
+
+  // WalletTransaction ↔ Order
+  Order.hasMany(WalletTransaction, { foreignKey: "orderId", as: "walletTransactions" });
+  WalletTransaction.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+
+  // WalletTransaction ↔ ReturnRequest
+  // Removed duplicate association using returnRequestId to fix SequelizeAssociationError
+  // ReturnRequest.hasOne(WalletTransaction, { foreignKey: "returnRequestId", as: "walletTransaction" });
+  // WalletTransaction.belongsTo(ReturnRequest, { foreignKey: "returnRequestId", as: "returnRequest" });
+
+  // Payout ↔ Store
+  Store.hasMany(Payout, { foreignKey: "storeId", as: "payouts" });
+  Payout.belongsTo(Store, { foreignKey: "storeId", as: "store" });
+
+  // Payout ↔ Wallet
+  Wallet.hasMany(Payout, { foreignKey: "walletId", as: "payouts" });
+  Payout.belongsTo(Wallet, { foreignKey: "walletId", as: "wallet" });
+
+  // ReturnRequest ↔ Order
+  ReturnRequest.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+  Order.hasMany(ReturnRequest, { foreignKey: "orderId", as: "returnRequests" });
+
+  // ReturnRequest ↔ OrderItem
+  ReturnRequest.belongsTo(OrderItem, { foreignKey: "orderItemId", as: "orderItem" });
+  OrderItem.hasMany(ReturnRequest, { foreignKey: "orderItemId", as: "returnRequests" });
+
+  // ReturnRequest ↔ User (Customer)
+  ReturnRequest.belongsTo(User, { foreignKey: "customerId", as: "customer" });
+  User.hasMany(ReturnRequest, { foreignKey: "customerId", as: "returnRequests" });
+
+  // ReturnRequest ↔ Store
+  ReturnRequest.belongsTo(Store, { foreignKey: "storeId", as: "store" });
+  Store.hasMany(ReturnRequest, { foreignKey: "storeId", as: "returnRequests" });
+
+  // ReturnRequest ↔ StorePickupStation
+  ReturnRequest.belongsTo(StorePickupStation, { foreignKey: "pickupStationId", as: "pickupStation" });
+  StorePickupStation.hasMany(ReturnRequest, { foreignKey: "pickupStationId", as: "returnRequests" });
+
+  // ReturnRequest ↔ WalletTransaction
+  ReturnRequest.belongsTo(WalletTransaction, { foreignKey: "walletTransactionId", as: "walletTransaction" });
+  WalletTransaction.hasMany(ReturnRequest, { foreignKey: "walletTransactionId", as: "returnRequests" });
+
+  // ReturnRequest ↔ User (ReviewedBy)
+  ReturnRequest.belongsTo(User, { foreignKey: "reviewedBy", as: "reviewer" });
 
 } catch (error) {
   console.error('Error creating model associations:', error);
@@ -267,4 +334,12 @@ module.exports = {
   Discount,
   Inventory,
   Notification,
+  ProductPickupStation,
+  OrderItemFulfillment,
+  Shipment,
+  SystemSetting,
+  Wallet,
+  WalletTransaction,
+  Payout,
+  ReturnRequest,
 };

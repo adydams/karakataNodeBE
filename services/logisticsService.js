@@ -1,6 +1,6 @@
 // services/logisticsService.js
 const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapter");
-const { Shipment, Address, Order, User } = require("../models");
+const { Shipment, Address, Order, User, Product, StorePickupStation } = require("../models");
 
 /**
  * LogisticsService
@@ -53,24 +53,12 @@ const LogisticsService = {
     categoryId,
     pickupDate,     // "yyyy-mm-dd", defaults to today
     serviceType,    // "pickup" | "dropoff" | undefined
+    senderStationId, // Optional: override sender station
   }) {
-    //   console.log("🔥 ShipBubble Payload:", {
-    //   senderAddressCode,
-    //   receiverAddressCode,
-    //   pickupDate: today,
-    //   categoryId,
-    //   packageItems,
-    //   packageDimension,
-    //   serviceType,
-    // });
-    
     const addr = await Address.findByPk(receiverAddressId);
     if (!addr) throw new Error("Shipping address not found");
-    
+
     console.log("Address record in logistics get rates:", addr.toJSON());
-    if (isNaN(addr.shipbubbleAddressCode)) {
-      throw new Error("Invalid senderAddressCode");
-    }
 
     let receiverAddressCode = addr.shipbubbleAddressCode;
     if (!receiverAddressCode) {
@@ -78,34 +66,33 @@ const LogisticsService = {
       receiverAddressCode = registered.address_code;
     }
 
-    const product = await Product.findByPk(id, {
-      include: ["pickupStation"]
-    });
+    let senderAddressCode;
+    if (senderStationId) {
+      const station = await StorePickupStation.findByPk(senderStationId);
+      if (!station) throw new Error("Sender station not found");
+      senderAddressCode = station.shipbubbleAddressCode;
+    } else {
+      senderAddressCode = process.env.SHIPBUBBLE_SENDER_ADDRESS_CODE;
+    }
 
-    senderAddressCode =
-      product.pickupStation.shipbubbleAddressCode;
-    
-      if (!senderAddressCode) throw new Error("This product's is not available for logistic delivery");
-      //give custome store address to go pick it up
-      //implement it later, for now just use the pickup station address code
+    if (!senderAddressCode) throw new Error("No sender address code available. Please configure SHIPBUBBLE_SENDER_ADDRESS_CODE in .env");
 
     const today = pickupDate || new Date().toISOString().split("T")[0];
 
     const ratesData = await ShipBubbleAdapter.fetchRates({
-        sender_address_code: Number(senderAddressCode),
-        reciever_address_code: Number(receiverAddressCode),
+        senderAddressCode: Number(senderAddressCode),
+        receiverAddressCode: Number(receiverAddressCode),
 
-        pickup_date: today,
-        category_id: Number(categoryId),
+        pickupDate: today,
+        categoryId: Number(categoryId || 1),
 
-        package_items: packageItems,
-        package_dimension: packageDimension,
+        packageItems: packageItems,
+        packageDimension: packageDimension,
 
-        service_type: serviceType, // pickup | dropoff
+        serviceType: serviceType, // pickup | dropoff
       });
 
     return ratesData;
-    // { request_token, couriers[], cheapest_courier, fastest_courier }
   },
 
   /**

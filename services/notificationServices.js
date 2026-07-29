@@ -1,5 +1,6 @@
-const { Notification } = require("../models");
+const { Notification, User, Store } = require("../models");
 const { Op } = require("sequelize");
+const emailServices = require("./emailServices");
 
 class NotificationServices {
   async send(userId, type, title, message, metadata = null, transaction) {
@@ -43,14 +44,36 @@ class NotificationServices {
     );
   }
 
-  async lowStockAlert(adminUserId, productId, productName, remaining) {
-    return this.send(
-      adminUserId,
+  async lowStockAlert(storeOwnerId, productId, stationName, remaining) {
+    // Fetch product name and owner email
+    const product = await require("../models").Product.findByPk(productId);
+    const owner = await User.findByPk(storeOwnerId);
+
+    const productName = product ? product.name : "Unknown Product";
+    const message = `Low Stock Alert: "${productName}" at ${stationName} has only ${remaining} unit(s) remaining.`;
+
+    // 1. In-app notification
+    await this.send(
+      storeOwnerId,
       "LOW_STOCK",
       "Low Stock Alert ⚠️",
-      `"${productName}" has only ${remaining} unit(s) remaining.`,
-      { productId }
+      message,
+      { productId, stationName }
     );
+
+    // 2. Email notification
+    if (owner && owner.email) {
+      try {
+        await emailServices.sendEmail({
+          to: owner.email,
+          subject: "⚠️ Low Stock Alert",
+          text: message,
+          html: `<p>${message}</p><p>Please restock the product at <strong>${stationName}</strong> as soon as possible.</p>`
+        });
+      } catch (err) {
+        console.error("Failed to send low stock email:", err);
+      }
+    }
   }
 
   // ---- Read / management ----

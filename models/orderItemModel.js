@@ -13,6 +13,11 @@ const sequelize = require('../db/database');
     allowNull: false 
   }, // matches Orders.id
   productId: { type: DataTypes.UUID, allowNull: false },   // <-- UUID now
+  pickupStationId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: { model: "store_pickup_stations", key: "id" }
+  },
   quantity: { type: DataTypes.INTEGER, allowNull: false },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },

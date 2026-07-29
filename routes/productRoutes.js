@@ -1,5 +1,6 @@
 const express = require("express");
 const ProductController = require("../controllers/productController");
+const { authenticate, ensureActive, authorizeRole } = require("../middlewares/auth");
 const router = express.Router();
 const multer = require("multer");
 
@@ -60,10 +61,15 @@ const upload = multer({ dest: "uploads/" });
  *         description: Product created successfully
  */
 
-router.post("/", upload.array("images", 5), ProductController.create);
+router.post("/",
+    upload.array("images", 5),
+    authenticate,
+    ensureActive,
+    authorizeRole("Admin","SuperAdmin"),
+    ProductController.create);
 
 /**
- * @swagger 
+ * @swagger
  * /api/products:
  *   get:
  *     summary: Get all products

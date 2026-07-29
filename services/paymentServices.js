@@ -270,6 +270,66 @@ class PaymentServices {
       return { handled: true };
     }
   }
+
+  /**
+   * Paystack Transfer API - for payouts to stores
+   */
+  async createTransfer({ amount, accountNumber, bankCode, accountName }) {
+    const payload = {
+      amount: Math.round(amount * 100),
+      destination: accountNumber,
+      currency: 'NGN',
+      reason: 'Store Payout',
+      debug: false,
+    };
+
+    const res = await axios.post(
+      `${process.env.PAYSTACK_URL}/transfer`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      }
+    );
+
+    if (!res.data?.status) throw new Error('Paystack transfer failed');
+
+    return {
+      code: res.data.data.transfer_code,
+      reference: res.data.data.reference,
+    };
+  }
+
+  /**
+   * Paystack Refund API - for customer returns
+   */
+  async createRefund({ orderId, amount }) {
+    const payment = await Payment.findOne({ where: { orderId } });
+    if (!payment || !payment.reference) throw new Error('Original payment reference not found');
+
+    const payload = {
+      amount: Math.round(amount * 100),
+      transaction_id: payment.reference,
+    };
+
+    const res = await axios.post(
+      `${process.env.PAYSTACK_URL}/refund`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      }
+    );
+
+    if (!res.data?.status) throw new Error('Paystack refund failed');
+
+    return {
+      reference: res.data.data.refund_reference,
+      status: res.data.data.status,
+    };
+  }
 }
 
 module.exports = new PaymentServices();

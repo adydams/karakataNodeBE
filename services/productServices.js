@@ -313,15 +313,30 @@ class ProductService {
   async getAllProducts() {
     return Product.findAll({
       where: { isDeleted: false },
-      include: [{ model: ProductImage, as: "images", attributes: ["url"] }],
+      include: [
+        { model: ProductImage, as: "images", attributes: ["url"] },
+        {
+          model: Inventory,
+          as: "inventories",
+          include: [{ model: ProductPickupStation, as: 'productPickupStation', include: [{ model: StorePickupStation, as: 'station' }] }]
+        }
+      ],
       order: [["createdAt", "DESC"]],
     });
   }
 
+
   async getProductById(id) {
     return Product.findOne({
       where: { id, isDeleted: false },
-      include: [{ model: ProductImage, as: "images", attributes: ["url"] }],
+      include: [
+        { model: ProductImage, as: "images", attributes: ["url"] },
+        {
+          model: Inventory,
+          as: "inventories",
+          include: [{ model: ProductPickupStation, as: 'productPickupStation', include: [{ model: StorePickupStation, as: 'station' }] }]
+        }
+      ],
     });
   }
 

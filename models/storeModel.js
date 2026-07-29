@@ -62,12 +62,34 @@ const Store = sequelize.define(
       onUpdate: "CASCADE",
     },
     
-  isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
+    isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
+
+    commissionRate: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+    },
+    returnWindowDays: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    payoutAccountNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    payoutBankCode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    payoutAccountName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     tableName: "stores",
     timestamps: true, // Sequelize manages createdAt + updatedAt
   }
+
 );
 
 module.exports = Store;
