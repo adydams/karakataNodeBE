@@ -31,6 +31,7 @@ const logisticsRoutes = require('./routes/logisticsRoutes');
 const returnRoutes = require('./routes/returnRoutes');
 const walletRoutes = require('./routes/walletRoutes');
 const adminSettingsRoutes = require('./routes/adminSettingsRoutes');
+const pickupStationRoutes = require('./routes/pickupStationRoutes');
 
 const app = express();
 
@@ -248,7 +249,7 @@ app.use('/api/admin', routeLogger('ADMIN'), adminRoutes);
 app.use('/api/returns', routeLogger('RETURNS'), returnRoutes);
 app.use('/api/wallet', routeLogger('WALLET'), walletRoutes);
 app.use('/api/admin/settings', routeLogger('ADMIN SETTINGS'), adminSettingsRoutes);
-
+app.use('/api/pickup-stations', routeLogger('PICKUP STATIONS'), pickupStationRoutes);
 
 
 // ============================================

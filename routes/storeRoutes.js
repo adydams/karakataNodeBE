@@ -82,7 +82,8 @@ router.get("/", authorizeRole("Admin", "SuperAdmin"), storeController.getAll);
  *       404:
  *         description: Store not found
  */
-router.get("/:id", authorizeRole("Admin", "SuperAdmin"), storeController.getById);
+router.get("/:id", //authorizeRole("Admin", "SuperAdmin"),
+ storeController.getById);
 
 /**
  * @swagger

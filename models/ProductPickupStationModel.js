@@ -21,16 +21,16 @@ const ProductPickupStation = sequelize.define(
       onUpdate: "CASCADE",
     },
 
-    // pickupStationId: {
-    //   type: DataTypes.UUID,
-    //   allowNull: false,
-    //   references: {
-    //     model: "store_pickup_stations",
-    //     key: "id",
-    //   },
-    //   onDelete: "CASCADE",
-    //   onUpdate: "CASCADE",
-    // },
+    pickupStationId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: "store_pickup_stations",
+        key: "id",
+      },
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
+    },
 
     isPrimary: {
       type: DataTypes.BOOLEAN,

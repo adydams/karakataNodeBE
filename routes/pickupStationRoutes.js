@@ -5,7 +5,7 @@ const router = express.Router();
 
 const controller =  require("../controllers/pickupStationController");
 
-const { authenticate } =  require("../middlewares/auth");
+const { authenticate, authorizeRole } =  require("../middlewares/auth");
 
 /**
  * @swagger
@@ -68,7 +68,7 @@ const { authenticate } =  require("../middlewares/auth");
  *       400:
  *         description: Validation error
  */
-router.post("/", authenticate, authorizeRole("Admin"), controller.create);
+router.post("/",   authenticate, authorizeRole("Admin"), controller.create);
 
 
 /**

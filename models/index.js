@@ -185,6 +185,20 @@ try {
     as: "products",
   });
 
+//   StorePickupStation.belongsToMany(Product, {
+//   through: "product_pickup_stations",
+//   foreignKey: "pickupStationId",
+//   otherKey: "productId",
+//   as: "products",
+// });
+
+// Product.belongsToMany(StorePickupStation, {
+//   through: "product_pickup_stations",
+//   foreignKey: "productId",
+//   otherKey: "pickupStationId",
+//   as: "pickupStations",
+// });
+
   ProductPickupStation.belongsTo(Product, { foreignKey: "productId" });
   ProductPickupStation.belongsTo(StorePickupStation, { foreignKey: "pickupStationId", as: "station" });
   ProductPickupStation.hasOne(Inventory, { foreignKey: "pickupStationId", sourceKey: "pickupStationId", as: "inventory" });
