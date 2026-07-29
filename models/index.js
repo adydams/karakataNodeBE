@@ -24,7 +24,7 @@ const AuditLog = require("./auditLogModel");
 const Discount = require("./DiscountModel");
 const Inventory = require("./inventoryModel");
 const Notification = require("./notificationModels");
-const ProductPickupStation = require("./productPickupStationModel");
+const ProductPickupStation = require("./ProductPickupStationModel");
 const OrderItemFulfillment = require("./orderItemFulfillmentModel");
 const Shipment = require("./shipmentModel");
 
