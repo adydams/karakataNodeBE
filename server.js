@@ -28,35 +28,24 @@ process.on("uncaughtException", (err) => {
 // ============================================
 
 (async () => {
+  // Start server immediately to display port
+  app.listen(port, () => {
+    console.log(`🚀 App running on port ${port}`);
+    console.log(`🌍 Environment: ${nodeEnv}`);
+    console.log(`🌐 URL: http://localhost:${port}`);
+
+    // Initialize scheduled tasks
+    setupMarketplaceCrons();
+    console.log('📅 Marketplace cron jobs initialized');
+  });
+
   try {
-
     console.log("🔄 Connecting to database...");
-
     await sequelize.authenticate();
-
-   // console.log('✅ Database connection established successfully.');
-
-    await sequelize.sync({  alter: false }); // Set to true if you want Sequelize to automatically update the schema (use with caution in production)
-
-   // console.log('✅ Database synchronized.');
-
-    // optional 
-    // await seedRolesAndPermissions(); 
-
-    app.listen(port, () => {
-      console.log(`🚀 App running on port ${port}`);
-      console.log(`🌍 Environment: ${nodeEnv}`);
-      console.log(`🌐 URL: http://localhost:${port}`);
-
-      // Initialize scheduled tasks
-      setupMarketplaceCrons();
-      console.log('📅 Marketplace cron jobs initialized');
-    });
-
+    await sequelize.sync({  alter: false });
+    console.log('✅ Database connection established and synchronized successfully.');
   } catch (error) {
-
     console.error('❌ Unable to connect to the database:', error);
-
     process.exit(1);
   }
 })();

@@ -182,7 +182,7 @@
 // module.exports = new ProductServices();
 
 
-const { sequelize, Product, ProductImage, Inventory } = require("../models");
+const { sequelize, Product, ProductImage, Inventory, ProductPickupStation, StorePickupStation } = require("../models");
 const QRCode = require("qrcode");
 const cloudinary = require("../config/cloudinary");
 
@@ -310,22 +310,50 @@ class ProductService {
     }
   }
 
+  // async getAllProducts() {
+  //   console.log("Fetching all products...");
+  //   return Product.findAll({
+  //     where: { isDeleted: false },
+  //     include: [
+  //       { model: ProductImage, as: "images", 
+  //         attributes: ["url"] },
+  //       {
+  //         model: Inventory,
+  //         as: "inventories",
+  //         include: [{
+  //           model: ProductPickupStation,
+  //           as: 'product_pickup_stations',
+  //           include: [{ model: StorePickupStation, as: 'station' }]
+  //         }]
+  //       }
+  //     ],
+  //     order: [["createdAt", "DESC"]],
+  //   });
+  // }
+
   async getAllProducts() {
-    return Product.findAll({
-      where: { isDeleted: false },
-      include: [
-        { model: ProductImage, as: "images", attributes: ["url"] },
-        {
-          model: Inventory,
-          as: "inventories",
-          include: [{ model: ProductPickupStation, as: 'productPickupStation', include: [{ model: StorePickupStation, as: 'station' }] }]
-        }
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-  }
-
-
+  return Product.findAll({
+    where: { isDeleted: false },
+    include: [
+      {
+        model: ProductImage,
+        as: "images",
+        attributes: ["url"]
+      },
+      {
+        model: Inventory,
+        as: "inventories",
+        include: [
+          {
+            model: StorePickupStation,
+            as: "pickupStation"
+          }
+        ]
+      }
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+}
   async getProductById(id) {
     return Product.findOne({
       where: { id, isDeleted: false },
@@ -334,7 +362,8 @@ class ProductService {
         {
           model: Inventory,
           as: "inventories",
-          include: [{ model: ProductPickupStation, as: 'productPickupStation', include: [{ model: StorePickupStation, as: 'station' }] }]
+          include: [{ model: ProductPickupStation, as: 'product_pickup_stations',
+           include: [{ model: StorePickupStation, as: 'station' }] }]
         }
       ],
     });
