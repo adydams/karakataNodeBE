@@ -5,7 +5,7 @@ const { Cart } = require("../models");
 
 exports.createCart = async (req, res) => {
   try {
-    
+    console.log("Creating cart for user:", req.user.id);
     const userId  = req.user.id;
     if (!userId) {
       return res.status(400).json({ success: false, error: "user login required" });

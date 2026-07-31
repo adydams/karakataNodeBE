@@ -24,7 +24,7 @@ const AuditLog = require("./auditLogModel");
 const Discount = require("./DiscountModel");
 const Inventory = require("./inventoryModel");
 const Notification = require("./notificationModels");
-const ProductPickupStation = require("./ProductPickupStationModel");
+const ProductPickupStation = require("./productPickupStationModel");
 const OrderItemFulfillment = require("./orderItemFulfillmentModel");
 const Shipment = require("./shipmentModel");
 
@@ -184,20 +184,6 @@ try {
     otherKey: "productId",
     as: "products",
   });
-
-//   StorePickupStation.belongsToMany(Product, {
-//   through: "product_pickup_stations",
-//   foreignKey: "pickupStationId",
-//   otherKey: "productId",
-//   as: "products",
-// });
-
-// Product.belongsToMany(StorePickupStation, {
-//   through: "product_pickup_stations",
-//   foreignKey: "productId",
-//   otherKey: "pickupStationId",
-//   as: "pickupStations",
-// });
 
   ProductPickupStation.belongsTo(Product, { foreignKey: "productId" });
   ProductPickupStation.belongsTo(StorePickupStation, { foreignKey: "pickupStationId", as: "station" });

@@ -68,7 +68,7 @@ const { authenticate, authorizeRole } =  require("../middlewares/auth");
  *       400:
  *         description: Validation error
  */
-router.post("/",   authenticate, authorizeRole("Admin"), controller.create);
+router.post("/",   authenticate, authorizeRole("Admin", "SuperAdmin"), controller.create);
 
 
 /**
@@ -89,7 +89,7 @@ router.post("/",   authenticate, authorizeRole("Admin"), controller.create);
  *       200:
  *         description: List of pickup stations
  */
-router.get("/", authenticate ,authorizeRole("Admin") , controller.getAll);
+router.get("/", authenticate ,authorizeRole("Admin", "SuperAdmin") , controller.getAll);
 
 
 /**
@@ -116,7 +116,7 @@ router.get("/", authenticate ,authorizeRole("Admin") , controller.getAll);
  *       200:
  *         description: Store pickup stations
  */
-router.get("/store/:storeId", authenticate, authorizeRole("Admin"), controller.getByStore);
+router.get("/store/:storeId", authenticate, authorizeRole("Admin", "SuperAdmin"), controller.getByStore);
 
 
 /**
@@ -145,7 +145,7 @@ router.get("/store/:storeId", authenticate, authorizeRole("Admin"), controller.g
  *       404:
  *         description: Not found
  */
-router.get("/:id", authenticate, authorizeRole("Admin"), controller.getOne);
+router.get("/:id", authenticate, authorizeRole("Admin", "SuperAdmin"), controller.getOne);
 
 
 /**

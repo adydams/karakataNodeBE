@@ -7,7 +7,7 @@ class ProductService {
 
  async createProduct(data, files) {
   const t = await sequelize.transaction();
-
+  console.log("Creating product with data:", data);
   try {
 
     // 1. Create Product
@@ -34,37 +34,28 @@ class ProductService {
       transaction: t
     });
 
-
+console.log("Product created:", product.toJSON());
     // 2. Create inventory against pickup station
     if (data.pickupStationId) {
 
       await Inventory.create({
-
         productId: product.id,
-
         pickupStationId: data.pickupStationId,
-
         quantityOnHand: data.stockQuantity ?? 0,
-
-        quantityReserved: 0,
-
+         quantityReserved: 0,
         lowStockThreshold:
           data.lowStockThreshold ?? 5,
-
       }, {
         transaction: t
       });
-
+console.log("Inventory created for pickup station:", data.pickupStationId);
     }
-
-
+   
     // 3. Upload product images
     let productImages = [];
 
     if(files && files.length){
-
       for(const file of files){
-
         const upload = await cloudinary.uploader.upload(
           file.path,
           {
@@ -74,13 +65,9 @@ class ProductService {
 
 
         productImages.push({
-
           productId: product.id,
-
           url: upload.secure_url,
-
           public_id: upload.public_id
-
         });
 
       }
@@ -92,7 +79,7 @@ class ProductService {
           transaction:t
         }
       );
-
+      console.log("Product images uploaded:", productImages.map(img => img.url));
     }
 
 
@@ -114,7 +101,7 @@ class ProductService {
         }
       );
 
-
+      console.log("QR Code uploaded to Cloudinary:", qrUpload.secure_url);
     await product.update(
       {
         qrCode: qrUpload.secure_url
@@ -157,10 +144,10 @@ class ProductService {
 
       ]
     });
-
+console.log("Product creation completed successfully:", product.toJSON());
 
   } catch(error){
-
+    console.error("Error creating product:", error);
     await t.rollback();
 
     throw error;
@@ -368,6 +355,7 @@ class ProductService {
  
 
   async getAllProducts() {
+    console.log("Fetching all products...");
     return Product.findAll({
       where: { isDeleted: false },
       include: [

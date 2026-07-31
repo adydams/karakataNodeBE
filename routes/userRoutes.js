@@ -3,7 +3,7 @@ const { auth, ensureActive } = require("../middlewares/auth");
 const UserCtrl = require("../controllers/userController");
 
 /**
- * @swagger
+ * @swagger 
  * tags: [Users]
  */
 

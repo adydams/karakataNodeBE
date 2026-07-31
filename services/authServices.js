@@ -344,7 +344,10 @@ class AuthServices {
 
   // get user by id (for /me)
   async getById(id) {
-    return await User.findByPk(id, { attributes: { exclude: ['passwordHash'] } });
+    return await User.findByPk(id, {
+      include: [{ model: Role, as: 'role' }],
+      attributes: { exclude: ['passwordHash'] }
+    });
   }
 
   async resetPassword(userId, oldPassword, newPassword)

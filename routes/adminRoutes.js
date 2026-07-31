@@ -2,8 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const adminController = require("../controllers/adminController");
-const { auth } = require("../middlewares/auth");
-const { authorizeRole }  = require("../middlewares/auth");
+const { authenticate, authorizeRole } = require("../middlewares/auth");
 
 /**
  * @swagger
@@ -92,7 +91,7 @@ router.post("/login", adminController.Adminlogin);
  *                 example: "@mysecurepassword"
  */
 router.post("/onboard-admin",
-             auth,
+             authenticate,
              //authorizeRole("SuperAdmin", "SystemAdmin"), // Multi-role access
             // authorizeRole("SuperAdmin"),
              //checkPermissions("admin:create"),  
@@ -164,8 +163,8 @@ router.post("/onboard-admin",
  *         description: Server error
  */
 router.get( "/filter/users",
-  auth,
-  authorizeRole("SuperAdmin", "SystemAdmin"),
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
   adminController.filterAdmins
 );
         
@@ -247,8 +246,8 @@ router.get( "/filter/users",
  */
 router.get(
   "/list",
-  auth,
-  authorizeRole("SuperAdmin", "SystemAdmin"),
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
   adminController.getAllAdmins
 );
 
@@ -274,8 +273,8 @@ router.get(
  */
 router.get(
   "/:id",
-  auth,
-  authorizeRole("SuperAdmin", "SystemAdmin"),
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
   adminController.getAdminById
 );
 
@@ -316,7 +315,7 @@ router.get(
  */
 router.put(
   "/:id",
-  auth,
+  authenticate,
   authorizeRole("SuperAdmin"),
   adminController.updateAdmin
 );
@@ -354,7 +353,7 @@ router.put(
  */
 router.patch(
   "/:id/role",
-  auth,
+  authenticate,
   authorizeRole("SuperAdmin"),
   adminController.updateAdminRole
 );
@@ -392,7 +391,7 @@ router.patch(
  */
 router.patch(
   "/:id/status",
-  auth,
+  authenticate,
   authorizeRole("SuperAdmin"),
   adminController.updateAdminStatus
 );
@@ -418,7 +417,7 @@ router.patch(
  */
 router.delete(
   "/:id",
-  auth,
+  authenticate,
   authorizeRole("SuperAdmin"),
   adminController.deleteAdmin
 );

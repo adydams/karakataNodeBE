@@ -39,13 +39,20 @@ process.on("uncaughtException", (err) => {
     console.log('📅 Marketplace cron jobs initialized');
   });
 
-  try {
-    console.log("🔄 Connecting to database...");
-    await sequelize.authenticate();
-    await sequelize.sync({  alter: false });
-    console.log('✅ Database connection established and synchronized successfully.');
-  } catch (error) {
-    console.error('❌ Unable to connect to the database:', error);
-    process.exit(1);
-  }
+  // try {
+  //   console.log("🔄 Connecting to database...");
+  //  // await sequelize.authenticate();
+  //  sequelize.authenticate()
+  //     .then(()=>{
+  //     console.log("Database connected");
+  //     })
+  //     .catch(err=>{
+  //     console.error(err);
+  //     });
+  //  // await sequelize.sync({  alter: false   })
+  //  // console.log('✅ Database connection established and synchronized successfully.');
+  // } catch (error) {
+  //   console.error('❌ Unable to connect to the database:', error);
+  //   process.exit(1);
+  // }
 })();

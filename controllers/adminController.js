@@ -154,7 +154,7 @@ exports.onboardAdmin = async (req, res) => {
 
     const { name, email, phone, password } = req.body;
     // const staticPassword = "Admin@123";
-
+    console.log("Onboarding Admin with data:", { name, email, phone, password });
     // ✅ Fetch the Admin roleId from the database
     const adminRole = await Role.findOne({ where: { name: "Admin" } });
     if (!adminRole) {
@@ -172,6 +172,7 @@ exports.onboardAdmin = async (req, res) => {
       password: password ,
       roleId: adminRole.id, // Use UUID roleId
     });
+    console.log("Admin onboarded successfully:", user);
 
         res.status(201).json({
           success: true,
@@ -240,7 +241,17 @@ exports.getAdminById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "Admin not found" });
     }
-    res.json({ success: true, user });
+
+    // Format response to be consistent with login and other admin endpoints
+    const formattedUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role?.name || null,
+      isActive: user.isActive,
+    };
+
+    res.json({ success: true, user: formattedUser });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

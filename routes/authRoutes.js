@@ -35,7 +35,8 @@ router.use(passport.initialize());
  *               password: { type: string }
  *     responses:
  *       201: { description: Created }
- *       400: { description: Bad request }
+ *       400: { description: Bad request } 
+ *       500: { description: Internal server error }
  */
 router.post("/register", authCtrl.register);
 
@@ -58,7 +59,10 @@ router.post("/register", authCtrl.register);
  *     responses:
  *       200: { description: Ok }
  */
-router.post("/login", authCtrl.login);
+router.post("/login", (req, res, next) => {
+    console.log(req.body);
+    next();
+}, authCtrl.login);
 
 /**
  * @swagger

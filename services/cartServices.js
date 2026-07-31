@@ -5,19 +5,19 @@ const ProductImage = require("../models/imageModel");
 
 exports.createCart = async (userId) => {
   try {
-    // Check if user already has an active or deleted cart
+    // Check if user already has a cart (could be deleted)
     const existingCart = await Cart.findOne({
-    where: { userId }, // ✅ only carts not deleted
-  });
-    if (existingCart.isDeleted == true) {
-      // If existing cart is marked deleted, restore it
+      where: { userId },
+    });
+
+    if (existingCart) {
       if (existingCart.isDeleted) {
+        // If existing cart is marked deleted, restore it
         existingCart.isDeleted = false;
         await existingCart.save();
         return existingCart;
       }
-
-      // If not deleted, just return the existing one
+      // This case is technically handled by the controller, but for safety:
       return existingCart;
     }
 

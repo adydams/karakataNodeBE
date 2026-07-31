@@ -1,34 +1,132 @@
 const express = require("express");
 const ProductController = require("../controllers/productController");
-const { authenticate, ensureActive, authorizeRole } = require("../middlewares/auth");
-const router = express.Router();
+const { 
+  authenticate, 
+  ensureActive, 
+  authorizeRole 
+} = require("../middlewares/auth");
+
 const multer = require("multer");
 
+const router = express.Router();
 
-// Multer setup (store temp files before upload to Cloudinary)
-const upload = multer({ dest: "uploads/" });
 
-/**
- * @swagger
- * tags:
- *   name: Products
- *   description: Product management
- */
+// Temporary storage before Cloudinary upload
+const upload = multer({
+  dest: "uploads/"
+});
 
 
 /**
  * @swagger
  * tags:
  *   name: Products
- *   description: Product management
+ *   description: Product management APIs
  */
+
 
 /**
  * @swagger
  * /api/products:
  *   post:
- *     summary: Create a new product with images
+ *     summary: Create product
  *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - price
+ *               - categoryId
+ *               - subCategoryId
+ *               - storeId
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               stockQuantity:
+ *                 type: integer
+ *               categoryId:
+ *                 type: string
+ *               subCategoryId:
+ *                 type: string
+ *               storeId:
+ *                 type: string
+ *               brandId:
+ *                 type: string
+ *               weightKg:
+ *                 type: number
+ *               pickupStationId:
+ *                 type: string
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *
+ */
+router.post(
+  "/",
+  authenticate,
+  ensureActive,
+  //authorizeRole("Admin","SuperAdmin"),
+  upload.array("images",5),
+  ProductController.create
+);
+
+
+
+/**
+ * @swagger
+ * /api/products:
+ *   get:
+ *     summary: Get all products
+ *     tags: [Products]
+ */
+router.get(
+  "/",
+  ProductController.getAll
+);
+
+
+
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   get:
+ *     summary: Get product by id
+ *     tags: [Products]
+ */
+router.get(
+  "/:id",
+  ProductController.getById
+);
+
+
+
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   put:
+ *     summary: Update product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *
  *     requestBody:
  *       required: true
  *       content:
@@ -44,103 +142,40 @@ const upload = multer({ dest: "uploads/" });
  *                 type: number
  *               stockQuantity:
  *                 type: integer
- *               categoryId:
+ *               pickupStationId:
  *                 type: string
- *               subCategoryId:
- *                 type: string
- *               brandId:
- *                 type: string
- *                 nullable: true
  *               images:
  *                 type: array
  *                 items:
  *                   type: string
  *                   format: binary
- *     responses:
- *       201:
- *         description: Product created successfully
  */
+router.put(
+  "/:id",
+  authenticate,
+  ensureActive,
+  authorizeRole("Admin","SuperAdmin"),
+  upload.array("images",5),
+  ProductController.update
+);
 
-router.post("/",
-    upload.array("images", 5),
-    authenticate,
-    ensureActive,
-    authorizeRole("Admin","SuperAdmin"),
-    ProductController.create);
 
-/**
- * @swagger
- * /api/products:
- *   get:
- *     summary: Get all products
- *     tags: [Products]
- *     responses:
- *       200:
- *         description: List of all products
- */
-router.get("/", ProductController.getAll);
-
-/**
- * @swagger
- * /api/products/{id}:
- *   get:
- *     summary: Get product by ID
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Product ID
- *     responses:
- *       200:
- *         description: Product details
- */
-router.get("/:id", ProductController.getById);
-
-/**
- * @swagger
- * /api/products/{id}:
- *   put:
- *     summary: Update product by ID
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Product ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *     responses:
- *       200:
- *         description: Product updated successfully
- */
-router.put("/:id", ProductController.update);
 
 /**
  * @swagger
  * /api/products/{id}:
  *   delete:
- *     summary: Delete product by ID
+ *     summary: Soft delete product
  *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Product ID
- *     responses:
- *       200:
- *         description: Product deleted successfully
  */
-router.delete("/:id", ProductController.delete);
+router.delete(
+  "/:id",
+  authenticate,
+  ensureActive,
+  authorizeRole("Admin","SuperAdmin"),
+  ProductController.delete
+);
+
+
 
 module.exports = router;
