@@ -2,6 +2,17 @@
 const { sequelize, Product, ProductImage, Inventory, ProductPickupStation, StorePickupStation } = require("../models");
 const QRCode = require("qrcode");
 const cloudinary = require("../config/cloudinary");
+const InventoryService = require("./inventoryServices");
+
+function parsePickupStations(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    return [];
+  }
+}
 
 class ProductService {
 
@@ -35,20 +46,59 @@ class ProductService {
     });
 
 console.log("Product created:", product.toJSON());
-    // 2. Create inventory against pickup station
-    if (data.pickupStationId) {
+    // 2. Create inventory against one or more pickup stations
+    const pickupStationsPayload = parsePickupStations(data.pickupStations);
 
+    if (pickupStationsPayload?.length > 0) {
+      for (const station of pickupStationsPayload) {
+        const stationId = station.stationId || station.pickupStationId;
+        if (!stationId) continue;
+        const initialStock = station.initialStock ?? station.quantityOnHand ?? 0;
+
+        await ProductPickupStation.findOrCreate({
+          where: {
+            productId: product.id,
+            pickupStationId: stationId,
+          },
+          defaults: {
+            productId: product.id,
+            pickupStationId: stationId,
+          },
+          transaction: t,
+        });
+
+        const [inventory] = await Inventory.findOrCreate({
+          where: {
+            productId: product.id,
+            pickupStationId: stationId,
+          },
+          defaults: {
+            productId: product.id,
+            pickupStationId: stationId,
+            quantityOnHand: initialStock,
+            quantityReserved: 0,
+            lowStockThreshold: station.lowStockThreshold ?? 5,
+          },
+          transaction: t,
+        });
+
+        if (inventory.quantityOnHand !== initialStock) {
+          await inventory.update({ quantityOnHand: initialStock }, { transaction: t });
+        }
+      }
+
+      await InventoryService.syncProductStockCache(product.id, t);
+    } else if (data.pickupStationId) {
       await Inventory.create({
         productId: product.id,
         pickupStationId: data.pickupStationId,
         quantityOnHand: data.stockQuantity ?? 0,
-         quantityReserved: 0,
-        lowStockThreshold:
-          data.lowStockThreshold ?? 5,
+        quantityReserved: 0,
+        lowStockThreshold: data.lowStockThreshold ?? 5,
       }, {
-        transaction: t
+        transaction: t,
       });
-console.log("Inventory created for pickup station:", data.pickupStationId);
+      console.log("Inventory created for pickup station:", data.pickupStationId);
     }
    
     // 3. Upload product images

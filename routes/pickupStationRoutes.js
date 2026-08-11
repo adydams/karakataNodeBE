@@ -192,6 +192,86 @@ router.put("/:id", authenticate, controller.update);
 
 /**
  * =========================
+ * ASSIGN PRODUCT TO PICKUP STATION
+ * =========================
+ */
+
+/**
+ * @swagger
+ * /api/pickup-stations/assign-product:
+ *   post:
+ *     summary: Assign a product to a pickup station and initialize stock
+ *     tags: [PickupStations]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - productId
+ *               - stationId
+ *               - initialStock
+ *             properties:
+ *               productId:
+ *                 type: string
+ *               stationId:
+ *                 type: string
+ *               initialStock:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Product assigned to pickup station successfully
+ *       400:
+ *         description: Validation error
+ */
+router.post("/assign-product", authenticate, authorizeRole("Admin", "SuperAdmin"), controller.assignProduct);
+
+
+/**
+ * =========================
+ * UPDATE STATION STOCK
+ * =========================
+ */
+
+/**
+ * @swagger
+ * /api/pickup-stations/update-stock:
+ *   put:
+ *     summary: Update inventory quantity for a product at a pickup station
+ *     tags: [PickupStations]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               productPickupStationId:
+ *                 type: string
+ *               inventoryId:
+ *                 type: string
+ *               productId:
+ *                 type: string
+ *               pickupStationId:
+ *                 type: string
+ *               newQuantity:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Inventory updated successfully
+ *       400:
+ *         description: Validation error
+ */
+router.put("/update-stock", authenticate, authorizeRole("Admin", "SuperAdmin"), controller.updateStock);
+
+
+/**
+ * =========================
  * DELETE (soft delete)
  * =========================
  */

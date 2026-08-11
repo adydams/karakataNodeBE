@@ -66,6 +66,15 @@ const upload = multer({
  *                 type: number
  *               pickupStationId:
  *                 type: string
+ *               pickupStations:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     stationId:
+ *                       type: string
+ *                     initialStock:
+ *                       type: integer
  *               images:
  *                 type: array
  *                 items:

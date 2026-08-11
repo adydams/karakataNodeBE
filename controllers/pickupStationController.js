@@ -128,8 +128,11 @@ class PickupStationController {
 
   async updateStock(req, res) {
     try {
-      const { productPickupStationId, newQuantity } = req.body;
-      const updatedInv = await PickupStationService.updateStationStock(productPickupStationId, newQuantity);
+      const { inventoryId, productPickupStationId, productId, pickupStationId, newQuantity } = req.body;
+      const updatedInv = await PickupStationService.updateStationStock(
+        { inventoryId, productPickupStationId, productId, pickupStationId },
+        newQuantity
+      );
       return res.status(200).json({ success: true, data: updatedInv });
     } catch (err) {
       return res.status(400).json({ success: false, message: err.message });

@@ -154,24 +154,25 @@ class PickupStationServices {
       });
 
       const [inventory] = await Inventory.findOrCreate({
-        where: { productPickupStationId: productStation.id },
+        where: {
+          productId,
+          pickupStationId: stationId,
+        },
         defaults: {
           productId,
-          productPickupStationId: productStation.id,
+          pickupStationId: stationId,
           quantityOnHand: initialStock,
-          lowStockThreshold: 10
+          quantityReserved: 0,
+          lowStockThreshold: 10,
         },
-        transaction: t
+        transaction: t,
       });
-
+ 
       if (inventory.quantityOnHand !== initialStock) {
         await inventory.update({ quantityOnHand: initialStock }, { transaction: t });
       }
-
-      await Product.update(
-        { stockQuantity: sequelize.literal(`stockQuantity + ${initialStock}`) },
-        { where: { id: productId }, transaction: t }
-      );
+ 
+      await InventoryService.syncProductStockCache(productId, t);
 
       await t.commit();
       return { productStation, inventory };
@@ -181,12 +182,41 @@ class PickupStationServices {
     }
   }
 
-  async updateStationStock(productPickupStationId, newQuantity) {
-    const inventory = await Inventory.findOne({ where: { productPickupStationId } });
-    if (!inventory) throw new Error("Inventory record not found");
+  async updateStationStock(payload, newQuantity) {
+    let inventory;
+    if (payload.inventoryId) {
+      inventory = await Inventory.findByPk(payload.inventoryId);
+    } else if (payload.productPickupStationId) {
+      const productPickupStation = await ProductPickupStation.findByPk(payload.productPickupStationId);
+      if (!productPickupStation) {
+        throw new Error("Product pickup station record not found");
+      }
+      inventory = await Inventory.findOne({
+        where: {
+          productId: productPickupStation.productId,
+          pickupStationId: productPickupStation.pickupStationId,
+        },
+      });
+    } else if (payload.productId && payload.pickupStationId) {
+      inventory = await Inventory.findOne({
+        where: {
+          productId: payload.productId,
+          pickupStationId: payload.pickupStationId,
+        },
+      });
+    }
 
-    const delta = newQuantity - inventory.quantityOnHand;
-    return await InventoryService.adjustStationStock(productPickupStationId, delta);
+    if (!inventory) {
+      throw new Error("Inventory record not found");
+    }
+
+    if (newQuantity < inventory.quantityReserved) {
+      throw new Error("New quantity cannot be less than reserved stock");
+    }
+
+    await inventory.update({ quantityOnHand: newQuantity });
+    await InventoryService.syncProductStockCache(inventory.productId);
+    return inventory;
   }
 }
 
