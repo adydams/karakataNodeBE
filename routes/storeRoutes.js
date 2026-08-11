@@ -61,7 +61,9 @@ router.post("/",  authenticate, authorizeRole("Admin", "SuperAdmin"), storeContr
  *       200:
  *         description: List of stores
  */
-router.get("/", authenticate, authorizeRole("Admin", "SuperAdmin"), storeController.getAll);
+router.get("/", authenticate, 
+    authorizeRole("Admin", "SuperAdmin"),
+     storeController.getAll);
 
 /**
  * @swagger
@@ -82,7 +84,7 @@ router.get("/", authenticate, authorizeRole("Admin", "SuperAdmin"), storeControl
  *       404:
  *         description: Store not found
  */
-router.get("/:id", //authorizeRole("Admin", "SuperAdmin"),
+router.get("/:id", authenticate, authorizeRole("Admin", "SuperAdmin"),
  storeController.getById);
 
 /**
