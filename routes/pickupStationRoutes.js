@@ -89,7 +89,8 @@ router.post("/",   authenticate, authorizeRole("Admin", "SuperAdmin"), controlle
  *       200:
  *         description: List of pickup stations
  */
-router.get("/", authenticate ,authorizeRole("Admin", "SuperAdmin") , controller.getAll);
+router.get("/", authenticate ,//authorizeRole("Admin", "SuperAdmin") ,
+ controller.getAll);
 
 
 /**

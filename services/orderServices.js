@@ -119,8 +119,9 @@ class OrderServices {
     let address = null;
     let shippingSnapshot = null;
     let shippingFee = 0;
+    const normalizedShippingMethod = String(shippingMethod).toLowerCase() === "shipping" ? "SHIPPING" : "pickup";
 
-    if (shippingMethod === "SHIPPING") {
+    if (normalizedShippingMethod === "SHIPPING") {
       if (!shippingAddressId) throw new Error("Shipping address is required");
       if (!requestToken)      throw new Error("Request token is required to verify shipping rate");
       if (!courierId)         throw new Error("Courier selection is required");
@@ -166,7 +167,7 @@ class OrderServices {
           estimatedDays: selectedCourier.estimated_days || null,
         },
       };
-    } else if (shippingMethod === "pickup") {
+    } else if (normalizedShippingMethod === "pickup") {
       if (!chosenStationId) throw new Error("Pickup station selection is required");
       shippingFee = 0;
     }
@@ -257,7 +258,7 @@ class OrderServices {
         phone,
         notes,
         gateway,
-        shippingMethod,
+        shippingMethod: normalizedShippingMethod,
         logisticsRequestToken: requestToken || null,
         logisticsServiceCode: serviceCode || null,
         logisticsCourierId: courierId || null,
