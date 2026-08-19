@@ -1,5 +1,5 @@
 const { Store, StorePickupStation, ProductPickupStation, Inventory, Product } = require("../models");
-const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapter");
+const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapterSafe");
 const InventoryService = require("./inventoryServices");
 const sequelize = require("../db/database");
 
@@ -24,9 +24,22 @@ class PickupStationServices {
     }
 
     try {
+      let email = data.email;
+      if (!email) {
+        email = store.email;
+        if (!email && store.ownerUserId) {
+          const owner = await User.findByPk(store.ownerUserId);
+          email = owner?.email;
+        }
+      }
+
+      if (!email) {
+        throw new Error("A valid email address is required for address validation. Please add an email to the pickup station, the store, or the store owner's profile.");
+      }
+
       const result = await ShipBubbleAdapter.validateAddress({
         name: data.contactPerson || store.name,
-        email: store.email,
+        email: email,
         phone: data.phone,
         address: data.address,
       });
@@ -116,10 +129,25 @@ class PickupStationServices {
 
     if (data.address && data.address !== station.address) {
       const store = await Store.findByPk(station.storeId);
+      if (!store) throw new Error("Associated store not found");
+
+      let email = data.email || station.email;
+      if (!email) {
+        email = store.email;
+        if (!email && store.ownerUserId) {
+          const owner = await User.findByPk(store.ownerUserId);
+          email = owner?.email;
+        }
+      }
+
+      if (!email) {
+        throw new Error("A valid email address is required for address validation. Please add an email to the pickup station, the store, or the store owner's profile.");
+      }
+
       try {
         const result = await ShipBubbleAdapter.validateAddress({
           name: data.contactPerson || station.contactPerson || store.name,
-          email: store.email,
+          email: email,
           phone: data.phone || station.phone,
           address: data.address,
         });

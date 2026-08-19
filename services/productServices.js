@@ -38,6 +38,7 @@ class ProductService {
       lengthCm: data.lengthCm || null,
       widthCm: data.widthCm || null,
       heightCm: data.heightCm || null,
+      boxSizeId: data.boxSizeId || null,
 
       logisticsCategoryId: data.logisticsCategoryId || null,
 
@@ -258,6 +259,8 @@ console.log("Product creation completed successfully:", product.toJSON());
 
         heightCm:
           data.heightCm ?? product.heightCm,
+        boxSizeId:
+          data.boxSizeId ?? product.boxSizeId,
 
         logisticsCategoryId:
           data.logisticsCategoryId ?? product.logisticsCategoryId

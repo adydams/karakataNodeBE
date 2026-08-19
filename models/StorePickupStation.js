@@ -37,6 +37,12 @@ const StorePickupStation = sequelize.define(
       allowNull: true,
     },
 
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: { isEmail: true },
+    },
+
     contactPerson: {
       type: DataTypes.STRING,
       allowNull: true,

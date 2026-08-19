@@ -163,7 +163,7 @@ exports.getById = async(req,res)=>{
 
       message:"Product updated successfully",
 
-      data:product.get({ plain: true }).get({ plain: true })
+      data:product.get({ plain: true })
 
     });
 

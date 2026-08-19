@@ -66,6 +66,10 @@ const Product = sequelize.define(
       allowNull: true
     },
 
+    boxSizeId: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
     logisticsCategoryId: {
       type: DataTypes.INTEGER,
       allowNull: true

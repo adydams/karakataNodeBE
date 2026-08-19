@@ -5,7 +5,7 @@ const InventoryService = require("./inventoryServices");
 const NotificationService = require("./notificationServices");
 const DiscountService = require("./DiscountServices");
 const SourcingService = require("./SourcingService");
-const ShipBubbleAdapter = require("./ShipBubbles/shipbubbleAdapter");
+const ShipBubbleAdapter = require("./ShipBubbles/shipbubbleAdapterSafe");
 const WalletService = require("./walletServices");
 const { SystemSetting } = require("../models");
 

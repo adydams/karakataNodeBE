@@ -128,6 +128,18 @@ async addItemToCart (cartId, productId, quantity = 1) {
   }
 
  // Handle removing a single item (internal helper)
+  async getCartItemById(id) {
+    return await CartItem.findByPk(id);
+  }
+
+  // Remove item by CartItem ID
+  async removeById(id) {
+    const item = await CartItem.findByPk(id);
+    if (!item) throw new Error("Cart item not found");
+    await item.destroy();
+    return null;
+  }
+
   async removeItem(cartId, productId, quantity = 1) {
     const existingItem = await CartItem.findOne({
       where: { cartId, productId },

@@ -24,42 +24,34 @@ class CartItemController {
     }
   }
 
-  // async removeItem(req, res) {
-  //   const { id } = req.params;
-  //   await cartItemService.removeItem(id);
-  //   res.status(204).send();
-  // }
+  async updateQuantity(req, res) {
+    try {
+      const { id } = req.params;
+      const { quantity } = req.body;
 
- async updateQuantity(req, res) {
-  try {
-    const { id } = req.params;
-    const { quantity } = req.body;
+      if (!quantity || quantity < 1) {
+        return res.status(400).json({ message: "Quantity must be at least 1" });
+      }
 
-    if (!quantity || quantity < 1) {
-      return res.status(400).json({ message: "Quantity must be at least 1" });
+      const item = await cartItemService.updateQuantity(id, quantity);
+
+      if (!item) {
+        return res.status(404).json({ message: "Cart item not found or deleted" });
+      }
+
+      return res.json({
+        message: "Quantity updated successfully",
+        data: item,
+      });
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
-
-    const item = await cartItemService.updateQuantity(id, quantity);
-
-    if (!item) {
-      return res.status(404).json({ message: "Cart item not found or deleted" });
-    }
-
-    return res.json({
-      message: "Quantity updated successfully",
-      data: item,
-    });
-  } catch (error) {
-    console.error("Error updating quantity:", error);
-    return res.status(500).json({ message: "Internal server error" });
   }
-}
-
 
   async getCartItems(req, res) {
     try {
     const { cartId } = req.params;
-    //console.log(`getCartItems ${cartId}`);
     const cart = await cartItemService.getCartItems(cartId);
 
     if (!cart) {
@@ -82,34 +74,28 @@ class CartItemController {
   }
 
   // Remove a single item from the cart
-async removeItem  (req, res)  {
-  try {
-    const { cartId, productId } = req.params;
-    const { quantity } = req.body; // optional, defaults to 1
+  async removeItem(req, res) {
+    try {
+      const { id } = req.params;
+      const quantity = req.body?.quantity;
 
-    const item = await cartItemService.removeItem(cartId, productId, quantity || 1);
+      if (quantity) {
+        const item = await cartItemService.getCartItemById(id);
+        if (!item) return res.status(404).json({ success: false, message: "Cart item not found" });
 
-    if (!item) {
-      return res.status(200).json({
-        success: true,
-        message: "Item removed completely from cart",
-      });
+        const result = await cartItemService.removeItem(item.cartId, item.productId, quantity);
+        if (!result) {
+          return res.status(200).json({ success: true, message: "Item removed completely from cart" });
+        }
+        return res.status(200).json({ success: true, message: "Item quantity updated", data: result });
+      } else {
+        await cartItemService.removeById(id);
+        return res.status(200).json({ success: true, message: "Item removed from cart" });
+      }
+    } catch (err) {
+      return res.status(400).json({ success: false, error: err.message });
     }
-
-    return res.status(200).json({
-      success: true,
-      message: "Item quantity updated",
-      data: item,
-    });
-  } catch (err) {
-    return res.status(400).json({
-      success: false,
-      error: err.message,
-    });
   }
-};
-
-
 }
 
 module.exports = new CartItemController();

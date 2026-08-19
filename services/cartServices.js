@@ -45,7 +45,7 @@ exports.getCartById = async (id) => {
             {
               model: Product,
               as: "product",
-              attributes: ["id", "name", "price", "description"],
+              attributes: ["id", "name", "price", "description", "weightKg", "lengthCm", "widthCm", "heightCm", "logisticsCategoryId"],
               include: [
                 {
                   model: ProductImage,

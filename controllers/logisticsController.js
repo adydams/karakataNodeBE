@@ -60,7 +60,7 @@ class LogisticsController {
       serviceType,
     });
     // ✅ FIXED PAYLOAD
-    const ratesData = await LogisticsService.getShippingRates({
+    let ratesData = await LogisticsService.getShippingRates({
       receiverAddressId: shippingAddressId,
       packageItems,
       packageDimension,
@@ -68,6 +68,25 @@ class LogisticsController {
       pickupDate,
       serviceType,
     });
+
+    // Apply platform markup so frontend sees final display fee
+    try {
+      const { SystemSetting } = require('../models');
+      const setting = await SystemSetting.findOne();
+      const markupRate = (setting?.shippingMarkupPercent || 0) / 100;
+
+      if (ratesData && Array.isArray(ratesData.couriers)) {
+        ratesData.couriers = ratesData.couriers.map(c => ({
+          ...c,
+          rawFee: c.fee,
+          markupAmount: parseFloat((c.fee * markupRate).toFixed(2)),
+          displayFee: parseFloat((c.fee * (1 + markupRate)).toFixed(2)),
+          fee: parseFloat((c.fee * (1 + markupRate)).toFixed(2)),
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to apply shipping markup:', err.message || err);
+    }
 
     return res.status(200).json({
       success: true,

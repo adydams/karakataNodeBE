@@ -33,14 +33,15 @@ exports.create = async (req, res) => {
       data: address,
     });
   } catch (err) {
+    const msg = err && err.message ? String(err.message) : '';
     // Distinguish validation-like errors from server errors
-    if (err.name === 'SequelizeValidationError' || /addressLine1/i.test(err.message)) {
-      return res.status(400).json({ success: false, message: err.message });
+    if (err.name === 'SequelizeValidationError' || /addressLine1/i.test(msg) || /ShipBubble/i.test(msg) || /not valid according to ShipBubble/i.test(msg) || /not valid/i.test(msg) || /full name/i.test(msg)) {
+      return res.status(400).json({ success: false, message: msg });
     }
 
     return res.status(500).json({
       success: false,
-      message: err.message,
+      message: msg || 'Server error',
     });
   }
 };

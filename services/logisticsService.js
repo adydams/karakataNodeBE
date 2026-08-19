@@ -1,5 +1,5 @@
 // services/logisticsService.js
-const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapter");
+const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapterSafe");
 const { Shipment, Address, Order, User, Product, StorePickupStation } = require("../models");
 
 /**
@@ -28,12 +28,22 @@ const LogisticsService = {
     const user = await User.findByPk(addr.userId);
     if (!user) throw new Error("User not found for address");
 
+    if (!user.email) {
+      throw new Error("User email is required for address validation. Please update your profile email.");
+    }
+
     const result = await ShipBubbleAdapter.validateAddress({
       name: user.name || user.fullName || "Customer",
       email: user.email,
-      phone: user.phone || addr.phone || "",
+      phone: user.phone || "",
       address: fullAddress,
+      code: addr.shipbubbleAddressCode || undefined, // optional, if already registered
     });
+    console.log("ShipBubble validation result ******:", result);
+
+    if (!result || !result.address_code) {
+      throw new Error("ShipBubble failed to provide an address code for this location. Please check your address details.");
+    }
 
     // Persist the address_code so we don't re-validate every time
     await addr.update({ shipbubbleAddressCode: result.address_code });
@@ -61,36 +71,88 @@ const LogisticsService = {
     console.log("Address record in logistics get rates:", addr.toJSON());
 
     let receiverAddressCode = addr.shipbubbleAddressCode;
-    if (!receiverAddressCode) {
-      const registered = await LogisticsService.validateAndRegisterAddress(receiverAddressId);
-      receiverAddressCode = registered.address_code;
+    if (receiverAddressCode === null || receiverAddressCode === undefined) {
+      try {
+        const registered = await LogisticsService.validateAndRegisterAddress(receiverAddressId);
+
+        console.log("****** registered Address registered with ShipBubble:", registered);
+        receiverAddressCode = registered.address_code;
+      } catch (err) {
+        throw new Error(`Address validation failed: ${err.message}`);
+      }
+    }
+
+    if (receiverAddressCode === null || receiverAddressCode === undefined) {
+      throw new Error("Recipient address code is required. Please ensure the address is validated with ShipBubble.");
     }
 
     let senderAddressCode;
     if (senderStationId) {
+      
+      console.log("Using sender station address code:", senderAddressCode);
       const station = await StorePickupStation.findByPk(senderStationId);
+      
+      console.log("Using sender station details", station ? station.toJSON() : "Station not found");
       if (!station) throw new Error("Sender station not found");
       senderAddressCode = station.shipbubbleAddressCode;
+
     } else {
       senderAddressCode = process.env.SHIPBUBBLE_SENDER_ADDRESS_CODE;
+      // Fallback: find any StorePickupStation that has a shipbubbleAddressCode set and use that
+      if (!senderAddressCode) {
+        const { Op } = require('sequelize');
+        const fallbackStation = await StorePickupStation.findOne({ where: { shipbubbleAddressCode: { [Op.ne]: null } } });
+        if (fallbackStation) senderAddressCode = fallbackStation.shipbubbleAddressCode;
+      }
     }
 
-    if (!senderAddressCode) throw new Error("No sender address code available. Please configure SHIPBUBBLE_SENDER_ADDRESS_CODE in .env");
+    if (!senderAddressCode) throw new Error("No sender address code available. Please configure SHIPBUBBLE_SENDER_ADDRESS_CODE in .env or register a sender station in the admin.");
 
     const today = pickupDate || new Date().toISOString().split("T")[0];
 
-    const ratesData = await ShipBubbleAdapter.fetchRates({
+    const finalCategoryId = Number(categoryId) || 74794423;
+
+    const normalizedPackageItems = packageItems.map(item => ({
+      name: String(item.name),
+      description: String(item.description),
+      unit_weight: String(item.unit_weight || 0),
+      unit_amount: String(item.unit_amount || 0),
+      quantity: String(item.quantity || 0),
+    }));
+
+    let ratesData = await ShipBubbleAdapter.fetchRates({
         senderAddressCode: Number(senderAddressCode),
         receiverAddressCode: Number(receiverAddressCode),
 
         pickupDate: today,
-        categoryId: Number(categoryId || 1),
+        categoryId: Number(finalCategoryId),
 
-        packageItems: packageItems,
+        packageItems: normalizedPackageItems,
         packageDimension: packageDimension,
 
         serviceType: serviceType, // pickup | dropoff
       });
+
+    // Normalize ShipBubble response so frontend and other services always see the same shape
+    // Common ShipBubble responses may use different property names; standardize to { request_token, couriers: [{ id, name, fee, estimated_days, service_code }] }
+    try {
+      const token = ratesData.request_token || ratesData.requestToken || ratesData.requestTokenId || null;
+      const rawCouriers = ratesData.couriers || ratesData.data || ratesData.options || [];
+
+      const couriers = (Array.isArray(rawCouriers) ? rawCouriers : Object.values(rawCouriers)).map(c => ({
+        id: c.id ?? c.courier_id ?? c.code ?? c.service_code ?? String(c.name || '').toLowerCase(),
+        name: c.name || c.courier_name || c.provider || null,
+        fee: Number(c.fee ?? c.amount ?? c.price ?? c.shipping_fee ?? c.rate ?? 0),
+        estimated_days: c.estimated_days ?? c.eta ?? c.estimated_delivery_days ?? null,
+        service_code: c.service_code ?? c.code ?? null,
+        raw: c,
+      }));
+
+      ratesData = { request_token: token, couriers };
+    } catch (err) {
+      // If normalization fails, return original payload but log the problem
+      console.error('Failed to normalize ShipBubble rates response:', err.message || err);
+    }
 
     return ratesData;
   },

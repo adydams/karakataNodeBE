@@ -1,5 +1,5 @@
 // services/addressServices.js
-const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapter");
+const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapterSafe");
 const { User, Address } = require("../models");
 
 
@@ -18,8 +18,45 @@ exports.createAddress = async (userId, data) => {
     country,
   } = normalized;
 
-  console.log("Creating address with data:", normalized);
+  const user = await User.findByPk(userId);
+  if (!user) throw new Error("User not found");
 
+  // Build full address string for ShipBubble validation
+  const fullAddress = [
+    addressLine1,
+    addressLine2,
+    city,
+    state,
+    country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  // Validate with ShipBubble first — address must be registered at ShipBubble to be considered valid
+  let validationResult;
+  try {
+    const latitude = normalized.latitude !== undefined ? Number(normalized.latitude) : undefined;
+    const longitude = normalized.longitude !== undefined ? Number(normalized.longitude) : undefined;
+
+    validationResult = await ShipBubbleAdapter.validateAddress({
+      name: user.name || "John Doe",
+      email: user.email,
+      phone: user.phone || "",
+      address: fullAddress,
+      latitude,
+      longitude,
+    });
+  } catch (err) {
+    // Bubble up adapter errors so the controller can return a helpful message to the frontend
+    console.error('ShipBubble validation failed:', err.message || err);
+    throw new Error(err.message || 'ShipBubble address validation failed');
+  }
+
+  if (!validationResult || !validationResult.address_code) {
+    throw new Error('Address is not valid according to ShipBubble. Please provide a correct address.');
+  }
+
+  // Create address with the returned shipbubbleAddressCode
   const address = await Address.create({
     userId,
     addressLine1,
@@ -28,39 +65,9 @@ exports.createAddress = async (userId, data) => {
     state,
     postalCode,
     country,
+    shipbubbleAddressCode: validationResult.address_code,
   });
 
-  const user = await User.findByPk(userId);
-  if (!user) throw new Error("User not found");
-
-  const fullAddress = [
-    address.addressLine1,
-    address.addressLine2,
-    address.city,
-    address.state,
-    address.country,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  // Call ShipBubble adapter but do not let its failures block address creation
-  try {
-    const result = await ShipBubbleAdapter.validateAddress({
-      name: `${user.firstName  || ""} ${user.lastname || ""}`.trim()  || user.fullName || "John Doe",
-      email: user.email,
-      phone: user.phone || "",
-      address: fullAddress,
-    });
-
-    if (result && result.address_code) {
-      await address.update({
-        shipbubbleAddressCode: result.address_code,
-      });
-    }
-  } catch (err) {
-    console.error('ShipBubble validation failed:', err.message || err);
-  }
- 
   return address;
 };
 
@@ -93,44 +100,59 @@ exports.updateAddress = async (id, userId, data) => {
     country,
   } = data;
 
-  await address.update({
-    addressLine1: addressLine1 ?? address.addressLine1,
-    addressLine2: addressLine2 ?? address.addressLine2,
-    city: city ?? address.city,
-    state: state ?? address.state,
-    postalCode: postalCode ?? address.postalCode,
-    country: country ?? address.country,
-    shipbubbleAddressCode: null,
-  });
-
-  const user = await User.findByPk(userId);
+  // Compute the new full address values (don't persist shipbubbleAddressCode until validation succeeds)
+  const newAddressLine1 = addressLine1 ?? address.addressLine1;
+  const newAddressLine2 = addressLine2 ?? address.addressLine2;
+  const newCity = city ?? address.city;
+  const newState = state ?? address.state;
+  const newCountry = country ?? address.country;
 
   const fullAddress = [
-    address.addressLine1,
-    address.addressLine2,
-    address.city,
-    address.state,
-    address.country,
+    newAddressLine1,
+    newAddressLine2,
+    newCity,
+    newState,
+    newCountry,
   ]
     .filter(Boolean)
     .join(", ");
 
-  // ShipBubble validation should not crash the update; handle errors gracefully
+  const user = await User.findByPk(userId);
+  if (!user) throw new Error('User not found');
+
+  // Validate with ShipBubble — require address_code to consider update valid
+  let validationResult;
   try {
-    const result = await ShipBubbleAdapter.validateAddress({
-      name: user.name || user.fullName || "Customer",
+    const latitude = data.latitude !== undefined ? Number(data.latitude) : undefined;
+    const longitude = data.longitude !== undefined ? Number(data.longitude) : undefined;
+
+    validationResult = await ShipBubbleAdapter.validateAddress({
+      name: user.name || "John Doe",
       email: user.email,
       phone: user.phone || "",
       address: fullAddress,
+      latitude,
+      longitude,
     });
-
-    if (result && result.address_code) {
-      await address.update({ shipbubbleAddressCode: result.address_code });
-    }
   } catch (err) {
-    // Log adapter error but don't fail the request
     console.error('ShipBubble validation failed:', err.message || err);
+    throw new Error(err.message || 'ShipBubble address validation failed');
   }
+
+  if (!validationResult || !validationResult.address_code) {
+    throw new Error('Address is not valid according to ShipBubble. Please provide a correct address.');
+  }
+
+  // All good — persist update with new shipbubbleAddressCode
+  await address.update({
+    addressLine1: newAddressLine1,
+    addressLine2: newAddressLine2,
+    city: newCity,
+    state: newState,
+    postalCode: postalCode ?? address.postalCode,
+    country: newCountry,
+    shipbubbleAddressCode: validationResult.address_code,
+  });
 
   return address;
 };
