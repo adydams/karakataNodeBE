@@ -1,6 +1,7 @@
 // controllers/paymentController.js
 const PaymentService = require("../services/paymentServices");
-const { Order, User } = require("../models");
+const CartService = require("../services/cartServices");
+const { Order, User, Cart, CartItem } = require("../models");
 
 class PaymentController {
   static async initialize(req, res) {
@@ -11,79 +12,111 @@ class PaymentController {
       const order = await Order.findByPk(orderId);
       const user = await User.findByPk(userId);
 
-      //console.log("Initializing payment for order:", orderId, "by user:", userId);
-      //console.log("Order:", order);
-      //console.log("User:", user);
       if (!order) return res.status(404).json({ message: "Order not found" });
 
-      const { paymentUrl, payment } = await PaymentService.initialize({
+      const { paymentUrl, paymentReference } = await PaymentService.initialize({
         order,
         user,
-        gateway,   
-        redirectUrl: process.env.BACKEND_URL  
+        gateway,
+        redirectUrl: process.env.BACKEND_URL
       });
 
-      res.status(200).json({ paymentUrl, payment });
+      // Save payment reference to the order for verification
+      order.paymentReference = paymentReference;
+      order.paymentGateway = gateway || order.paymentGateway;
+      await order.save();
+
+      res.status(200).json({ paymentUrl, paymentReference });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   }
 
-  // static async verify(req, res) {
-  //   try {
-  //     const { gateway, reference } = req.query;
-
-  //     const isSuccess = await PaymentService.verifyPayment(gateway, reference);
-
-  //     res.status(200).json({
-  //       success: isSuccess,
-  //       message: isSuccess ? "Payment verified successfully" : "Payment verification failed"
-  //     });
-  //   } catch (err) {
-  //     res.status(500).json({ error: err.message });
-  //   }
-  // }
-
   static async verify(req, res) {
-  try {
-    //console.log("🔁 Verify endpoint hit");
-    //console.log("Query:", req.query);
-    const { gateway, reference, orderId } = req.query;
+    try {
+      const { gateway, orderId } = req.query;
+       console.log("Before*******Im in verify payment controller", orderId);
+    
+        const order = await Order.findByPk(orderId);
+        console.log("*******Im in verify payment controller", order, orderId);
+    
+      
+      if (!order) throw new Error("Order not found");
 
-    const result = await PaymentService.verify({
-      gateway,
-      reference
-    });
-      //console.log("Verification result:", result);
-    const order = await Order.findByPk(orderId);
+      const result = await PaymentService.verify({
+        gateway: gateway || order.paymentGateway,
+        reference: req.query.reference || order.paymentReference
+      });
+      console.log("Payment Verification Result:", JSON.stringify(result, null, 2));
 
-    if (!order) throw new Error("Order not found");
+      if (result.success) {
+        order.status = "PAID";
+        order.paymentStatus = "SUCCESS";
 
-    // ⚠️ DO NOT rely on this for truth (webhook already handled it)
-    if (result.success) {
-      order.status = "PAID";
-      order.paymentStatus = "SUCCESS";
-    } else {
-      order.status = "FAILED";
-      order.paymentStatus = "FAILED";
+        const userCart = await Cart.findOne({ where: { userId: order.userId }, isDeleted: false });
+        if (userCart) {
+          await CartItem.destroy({ where: { cartId: userCart.id } });
+          console.log(`🧹 Cart cleared for user ${order.userId} after successful payment`);
+        }
+        await order.save();
+
+        if (req.headers['accept'] && req.headers['accept'].includes('application/json')) {
+          return res.status(200).json({ success: true, orderId: order.id });
+        }
+
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/payment-success?orderId=${order.id}`
+        );
+      } else {
+        order.status = "FAILED";
+        order.paymentStatus = "FAILED";
+        await order.save();
+
+        if (req.headers['accept'] && req.headers['accept'].includes('application/json')) {
+          return res.status(200).json({ success: false });
+        }
+
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/payment-failed`
+        );
+      }
+
+    } catch (err) {
+      console.error(err);
+      if (req.headers['accept'] && req.headers['accept'].includes('application/json')) {
+        return res.status(500).json({ success: false, error: err.message });
+      }
+      return res.redirect(
+        `${process.env.FRONTEND_URL}/payment-failed`
+      );
     }
-
-    await order.save();
-    //console.log("Order updated to:", order.status);
-    //console.log("➡️ Redirecting to frontend with order:", order.id);
-    // ✅ REDIRECT USER TO FRONTEND INVOICE PAGE
-    return res.redirect(
-      `${process.env.FRONTEND_URL}/payment-success?orderId=${order.id}`
-    );
-
-  } catch (err) {
-    console.error(err);
-    return res.redirect(
-      `${process.env.FRONTEND_URL}/payment-failed`
-    );
   }
-}
-  
+
+  static async webhookPaystack(req, res) {
+    try {
+      const result = await PaymentService.handleWebhookPaystack(req.rawBody, req.headers['x-paystack-signature']);
+      if (result.handled) {
+        return res.status(200).json({ status: 'success' });
+      }
+      return res.status(404).json({ status: 'not_found' });
+    } catch (err) {
+      console.error("Paystack Webhook Error:", err);
+      return res.status(400).json({ status: 'error', message: err.message });
+    }
+  }
+
+  static async webhookFlutterwave(req, res) {
+    try {
+      const result = await PaymentService.handleWebhookFlutterwave(req.rawBody, req.headers['verif-hash']);
+      if (result.handled) {
+        return res.status(200).json({ status: 'success' });
+      }
+      return res.status(404).json({ status: 'not_found' });
+    } catch (err) {
+      console.error("Flutterwave Webhook Error:", err);
+      return res.status(400).json({ status: 'error', message: err.message });
+    }
+  }
 }
 
 module.exports = PaymentController;

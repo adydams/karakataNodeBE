@@ -32,6 +32,10 @@ const returnRoutes = require('./routes/returnRoutes');
 const walletRoutes = require('./routes/walletRoutes');
 const adminSettingsRoutes = require('./routes/adminSettingsRoutes');
 const pickupStationRoutes = require('./routes/pickupStationRoutes');
+const driverRoutes = require('./routes/driverRoutes');
+const auditRoutes = require('./routes/auditRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+
 
 const app = express();
 
@@ -170,7 +174,14 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // ============================================
 
 app.use(cookieParser());
-app.use(compression());
+app.use(compression({
+  filter: (req, res) => {
+    if (res.getHeader('Content-Type') === 'application/pdf') {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
 
 
 // ============================================
@@ -250,6 +261,10 @@ app.use('/api/returns', routeLogger('RETURNS'), returnRoutes);
 app.use('/api/wallet', routeLogger('WALLET'), walletRoutes);
 app.use('/api/admin/settings', routeLogger('ADMIN SETTINGS'), adminSettingsRoutes);
 app.use('/api/pickup-stations', routeLogger('PICKUP STATIONS'), pickupStationRoutes);
+app.use('/api/driver', routeLogger('DRIVER'), driverRoutes);
+app.use('/api/notifications', routeLogger('NOTIFICATIONS'), notificationRoutes);
+app.use('/api/audit', routeLogger('AUDIT'), auditRoutes);
+
 
 
 // ============================================

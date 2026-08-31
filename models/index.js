@@ -27,6 +27,9 @@ const Notification = require("./notificationModels");
 const ProductPickupStation = require("./productPickupStationModel");
 const OrderItemFulfillment = require("./orderItemFulfillmentModel");
 const Shipment = require("./shipmentModel");
+const ShipmentEvent = require("./shipmentEventModel");
+const ProductDiscount = require("./productDiscountModel");
+const ShippingProvider = require("./shippingProviderModel");
 
 // Marketplace Models
 const SystemSetting = require("./systemSettingModel");
@@ -61,6 +64,9 @@ const models = {
   ProductPickupStation,
   OrderItemFulfillment,
   Shipment,
+  ShipmentEvent,
+  ProductDiscount,
+  ShippingProvider,
   SystemSetting,
   Wallet,
   WalletTransaction,
@@ -119,15 +125,25 @@ try {
   // Order ↔ OrderItem
   Order.hasMany(OrderItem, { foreignKey: "orderId", as: "items", onDelete: "CASCADE" });
   OrderItem.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+  OrderItem.belongsTo(Product, { foreignKey: "productId", as: "product" });
+  Product.hasMany(OrderItem, { foreignKey: "productId", as: "orderItems" });
 
   OrderItem.hasMany(OrderItemFulfillment, { foreignKey: "orderItemId", as: "fulfillments" });
   OrderItemFulfillment.belongsTo(OrderItem, { foreignKey: "orderItemId", as: "orderItem" });
   OrderItemFulfillment.belongsTo(StorePickupStation, { foreignKey: "pickupStationId", as: "pickupStation" });
   OrderItem.belongsTo(StorePickupStation, { foreignKey: "pickupStationId", as: "pickupStation" });
 
-  // OrderItem ↔ Product
-  OrderItem.belongsTo(Product, { foreignKey: "productId", as: "product" });
-  Product.hasMany(OrderItem, { foreignKey: "productId", as: "orderItems" });
+  // Order ↔ Discount (Global Order Discount)
+  Order.belongsTo(Discount, { foreignKey: "discountId", as: "globalDiscount" });
+  Discount.hasMany(Order, { foreignKey: "discountId", as: "orders" });
+
+  // OrderItem ↔ ProductDiscount (Specific Item Discount at time of purchase)
+  OrderItem.belongsTo(ProductDiscount, { foreignKey: "productDiscountId", as: "itemDiscount" });
+  ProductDiscount.hasMany(OrderItem, { foreignKey: "productDiscountId", as: "orderItems" });
+
+  // Product ↔ ProductDiscount (Current active discounts for a product)
+  Product.hasMany(ProductDiscount, { foreignKey: "productId", as: "discounts" });
+  ProductDiscount.belongsTo(Product, { foreignKey: "productId", as: "product" });
 
   // Associations
   Brand.hasMany(Product, { as: "products", foreignKey: "brandId" });
@@ -230,8 +246,7 @@ try {
   AuditLog.belongsTo(User, { foreignKey: "userId", as: "user" });
 
   // ================= DISCOUNT =================
-  Discount.hasMany(Order, { foreignKey: "discountId", as: "orders" });
-  Order.belongsTo(Discount, { foreignKey: "discountId", as: "discount" });
+  // Associations handled in the main block above
 
   User.hasMany(Discount, { foreignKey: "createdBy", as: "createdDiscounts" });
   Discount.belongsTo(User, { foreignKey: "createdBy", as: "creator" });
@@ -244,6 +259,15 @@ try {
   Notification.belongsTo(Order, { foreignKey: "orderId", as: "order" });
 
   // ================= MARKETPLACE & WALLET =================
+
+  // Shipment Associations
+  Shipment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
+  Shipment.belongsTo(ShippingProvider, { foreignKey: 'providerId', as: 'shippingProvider' });
+  Shipment.belongsTo(User, { foreignKey: 'driverId', as: 'driver' });
+  User.hasMany(Shipment, { foreignKey: 'driverId', as: 'shipments' });
+
+  ShipmentEvent.belongsTo(Shipment, { foreignKey: 'shipmentId', as: 'shipment' });
+  Shipment.hasMany(ShipmentEvent, { foreignKey: 'shipmentId', as: 'events' });
 
   // Wallet ↔ Store
   Store.hasOne(Wallet, { foreignKey: "storeId", as: "wallet" });
@@ -337,6 +361,9 @@ module.exports = {
   ProductPickupStation,
   OrderItemFulfillment,
   Shipment,
+  ShipmentEvent,
+  ProductDiscount,
+  ShippingProvider,
   SystemSetting,
   Wallet,
   WalletTransaction,

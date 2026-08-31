@@ -1,7 +1,6 @@
 const { Op } = require("sequelize");
 const sequelize = require("../db/database");
 const { Inventory, Product, StorePickupStation } = require("../models");
-const notificationServices = require("./notificationServices");
 
 class InventoryServices {
   /**
@@ -183,10 +182,18 @@ class InventoryServices {
   }
 
   async syncProductStockCache(productId, transaction) {
-    const total = await Inventory.sum("quantityOnHand", {
+    const inventoryRows = await Inventory.findAll({
+      attributes: [
+        [sequelize.literal("GREATEST(quantityOnHand - quantityReserved, 0)"), "available"],
+      ],
       where: { productId, isDeleted: false },
+      raw: true,
       transaction,
     });
+    const total = inventoryRows.reduce(
+      (sum, row) => sum + Number(row.available || 0),
+      0
+    );
     await Product.update(
       { stockQuantity: total || 0 },
       { where: { id: productId }, transaction }

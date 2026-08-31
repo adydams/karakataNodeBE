@@ -43,7 +43,11 @@ const sequelize = require('../db/database');
       
    
     //  onDelete: "CASCADE", // ✅ delete users if their role is deleted
-    isEmailVerified: { type: DataTypes.BOOLEAN, defaultValue: false }, 
+    isEmailVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
+    department: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
     
   isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
       // provider + providerId for OAuth

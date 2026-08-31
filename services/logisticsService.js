@@ -1,5 +1,6 @@
 // services/logisticsService.js
 const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapterSafe");
+const ShippingPriceCalculator = require("./shippingPriceCalculator");
 const { Shipment, Address, Order, User, Product, StorePickupStation } = require("../models");
 
 /**
@@ -148,8 +149,52 @@ const LogisticsService = {
         raw: c,
       }));
 
+      // --- Add Karakata Internal Fleet Option ---
+      try {
+        console.log("[Internal Shipping] Starting calculation...");
+        const totalWeight = packageItems.reduce((sum, item) => sum + (Number(item.unit_weight || 0) * Number(item.quantity || 0)), 0);
+        console.log(`[Internal Shipping] Total weight: ${totalWeight}kg`);
+
+        let origin = null;
+        if (senderStationId) {
+          const station = await StorePickupStation.findByPk(senderStationId);
+          if (station) {
+            origin = { latitude: station.latitude, longitude: station.longitude };
+            console.log(`[Internal Shipping] Origin (Station ${senderStationId}):`, origin);
+          }
+        } else {
+          const { Op } = require('sequelize');
+          const fallbackStation = await StorePickupStation.findOne({ where: { latitude: { [Op.ne]: null } } });
+          if (fallbackStation) {
+            origin = { latitude: fallbackStation.latitude, longitude: fallbackStation.longitude };
+            console.log(`[Internal Shipping] Origin (Fallback Station ${fallbackStation.id}):`, origin);
+          } else {
+            console.log("[Internal Shipping] No origin station with coordinates found.");
+          }
+        }
+
+        const destination = { latitude: addr.latitude, longitude: addr.longitude };
+        console.log(`[Internal Shipping] Destination:`, destination);
+
+        const internalFee = await ShippingPriceCalculator.calculateInternalPrice(origin, destination, totalWeight);
+        console.log(`[Internal Shipping] Calculated Fee: ₦${internalFee}`);
+
+        couriers.unshift({
+          id: 'karakata-internal',
+          name: 'Karakata Internal Fleet',
+          fee: internalFee,
+          estimated_days: '1-2',
+          service_code: 'INTERNAL',
+          raw: { provider: 'internal' }
+        });
+        console.log(`[Internal Shipping] Successfully added to courier list. Total couriers: ${couriers.length}`);
+      } catch (internalErr) {
+        console.error('[Internal Shipping] Fatal error during calculation:', internalErr);
+      }
+
       ratesData = { request_token: token, couriers };
     } catch (err) {
+
       // If normalization fails, return original payload but log the problem
       console.error('Failed to normalize ShipBubble rates response:', err.message || err);
     }

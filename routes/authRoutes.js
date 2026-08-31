@@ -146,6 +146,8 @@ router.get("/google/callback", async (req, res) => {
  *       401: { description: Unauthorized }
  */
 router.get("/me", auth, ensureActive, authCtrl.me);
+router.put("/profile", auth, authCtrl.updateProfile);
+router.post("/logout", auth, authCtrl.logout);
 
 /**
  * @swagger

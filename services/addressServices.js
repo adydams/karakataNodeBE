@@ -56,7 +56,7 @@ exports.createAddress = async (userId, data) => {
     throw new Error('Address is not valid according to ShipBubble. Please provide a correct address.');
   }
 
-  // Create address with the returned shipbubbleAddressCode
+  // Create address with the returned shipbubbleAddressCode and coordinates
   const address = await Address.create({
     userId,
     addressLine1,
@@ -66,6 +66,8 @@ exports.createAddress = async (userId, data) => {
     postalCode,
     country,
     shipbubbleAddressCode: validationResult.address_code,
+    latitude: validationResult.latitude || null,
+    longitude: validationResult.longitude || null,
   });
 
   return address;
@@ -143,7 +145,7 @@ exports.updateAddress = async (id, userId, data) => {
     throw new Error('Address is not valid according to ShipBubble. Please provide a correct address.');
   }
 
-  // All good — persist update with new shipbubbleAddressCode
+  // All good — persist update with new shipbubbleAddressCode and coordinates
   await address.update({
     addressLine1: newAddressLine1,
     addressLine2: newAddressLine2,
@@ -152,6 +154,8 @@ exports.updateAddress = async (id, userId, data) => {
     postalCode: postalCode ?? address.postalCode,
     country: newCountry,
     shipbubbleAddressCode: validationResult.address_code,
+    latitude: validationResult.latitude || address.latitude,
+    longitude: validationResult.longitude || address.longitude,
   });
 
   return address;

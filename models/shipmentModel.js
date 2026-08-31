@@ -15,11 +15,32 @@ const Shipment = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
-    // ShipBubble's own order ID e.g. "SB-2CF48224272"
-    shipbubbleOrderId: {
+    // External or Internal Order ID e.g. "SB-2CF48224272" or "INT-123"
+    providerOrderId: {
       type: DataTypes.STRING,
       allowNull: true,
       unique: true,
+    },
+    provider: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'shipbubble',
+    },
+    providerId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'shipping_providers',
+        key: 'id',
+      },
+    },
+    driverId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
     courier: {
       type: DataTypes.STRING,

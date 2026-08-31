@@ -1,0 +1,577 @@
+const { sequelize, Order, OrderItem, Cart, CartItem, Product, User, Payment, ProductImage, Address, OrderItemFulfillment, ProductDiscount, Discount, SystemSetting } = require("../models");
+const PaymentService = require("./paymentServices");
+const LogisticsService = require("./logisticsService");
+const InventoryService = require("./inventoryServices");
+const NotificationService = require("./notificationServices");
+const DiscountService = require("./DiscountServices");
+const SourcingService = require("./SourcingService");
+const ShipBubbleAdapter = require("./ShipBubbles/shipbubbleAdapterSafe");
+const WalletService = require("./walletServices");
+const shippingManager = require("./shippingManager");
+const { calculateCurrentPrice } = require("../utils/priceHelper");
+
+class OrderServices {
+
+  /**
+   * Calculates shipping quotes with platform markup.
+   * Called by the frontend to show shipping options to the customer.
+   */
+  async getShippingQuote(params) {
+    const setting = await SystemSetting.findOne();
+    const markupRate = (setting?.shippingMarkupPercent || 0) / 100;
+
+    // 1. Calculate total weight of the package
+    const cart = await Cart.findOne({
+      where: { userId: params.userId },
+      include: [{
+        model: CartItem,
+        as: "items",
+        include: [{ model: Product, as: "product" }]
+      }],
+    });
+
+    if (!cart || !cart.items.length) throw new Error("Cart is empty");
+    const totalWeight = cart.items.reduce((sum, item) => sum + (item.product?.weightKg || 0) * item.quantity, 0);
+
+    // 2. Get Address coordinates
+    const address = await Address.findOne({ where: { id: params.receiverAddressId } });
+    if (!address) throw new Error("Receiver address not found");
+
+    // For origin, we use a default hub or the first station associated with products
+    // In a real scenario, this would be the most optimal station.
+    const origin = { latitude: 6.5244, longitude: 3.3792 }; // Default Lagos Hub coordinates
+
+    const destination = {
+      latitude: parseFloat(address.latitude),
+      longitude: parseFloat(address.longitude),
+    };
+
+    // 3. Get quotes from all providers via the Manager
+    const quotes = await shippingManager.getAllQuotes(origin, destination, totalWeight);
+
+    // 4. Apply markup and format for frontend
+    return {
+      couriers: quotes.map(q => {
+        const isExternal = q.provider !== 'internal';
+        const rawFee = q.price;
+        const markupAmount = isExternal ? parseFloat((rawFee * markupRate).toFixed(2)) : 0;
+        const finalFee = parseFloat((rawFee + markupAmount).toFixed(2));
+
+        return {
+          ...q,
+          rawFee,
+          markupAmount,
+          fee: finalFee,
+          displayFee: finalFee,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Internal helper — creates the Order row + OrderItems + Fulfillments.
+   * Always called inside an existing transaction.
+   */
+  async _createOrderWithItems(userId, {
+    items,
+    totalAmount,
+    shippingAddressId,
+    shippingSnapshot,
+    phone,
+    notes,
+    gateway,
+    shippingMethod,
+    logisticsRequestToken,
+    logisticsServiceCode,
+    logisticsCourierId,
+    shippingFee,
+    discountCode,
+    discountAmount,
+    allocationsMap, // { productId: [ { pickupStationId, quantity } ] }
+  }, transaction) {
+    const order = await Order.create({
+      userId,
+      totalAmount,
+      shippingAddressId: shippingAddressId || null,
+      shippingSnapshot: shippingSnapshot || null,
+      phone,
+      notes,
+      gateway,
+      shippingMethod,
+      logisticsRequestToken,
+      logisticsServiceCode,
+      logisticsCourierId,
+      shippingFee: shippingFee || 0,
+      status: "PENDING",
+    }, { transaction });
+
+    for (const item of items) {
+      const orderItem = await OrderItem.create({
+        orderId: order.id,
+        productId: item.productId,
+        productName: item.productName,
+        price: item.unitPrice,
+        quantity: item.quantity,
+        subtotal: item.subtotal,
+        productDiscountId: item.appliedDiscountId,
+      }, { transaction });
+
+      const productAllocations = allocationsMap[item.productId] || [];
+      if (productAllocations.length === 1) {
+        await orderItem.update({ pickupStationId: productAllocations[0].pickupStationId }, { transaction });
+      }
+
+      const fulfillments = productAllocations.map(alloc => ({
+        orderItemId: orderItem.id,
+        pickupStationId: alloc.pickupStationId,
+        quantity: alloc.quantity
+      }));
+      await OrderItemFulfillment.bulkCreate(fulfillments, { transaction });
+    }
+
+    return order;
+  }
+
+  async checkout(userId, {
+    shippingAddressId,
+    phone,
+    notes,
+    gateway,
+    email,
+    shippingMethod, // 'shipping' or 'pickup'
+    chosenStationId, // required if shippingMethod === 'pickup'
+    requestToken,
+    serviceCode,
+    courierId,
+    shippingProvider, // 'internal' or 'shipbubble'
+    discountCode,
+  }) {
+    const user = await User.findByPk(userId);
+    if (!user) throw new Error("User not found");
+
+    // ── PHASE 1: CART PROCESSING (Needed for weight/pricing) ──────────────────
+    const cart = await Cart.findOne({
+      where: { userId },
+      include: [{
+        model: CartItem,
+        as: "items",
+        include: [{
+          model: Product,
+          as: "product",
+          include: [{ model: ProductDiscount, as: "discount" }]
+        }],
+      }],
+    });
+
+    if (!cart || cart.items.length === 0) throw new Error("Cart is empty");
+
+    let productTotal = 0;
+    const items = [];
+    for (const item of cart.items) {
+      if (!item.product) throw new Error(`Product not found for cart item ${item.id}`);
+      const { finalPrice, appliedDiscountId } = await calculateCurrentPrice(item.product, item.quantity);
+      const subtotal = item.quantity * finalPrice;
+      productTotal += subtotal;
+      items.push({
+        productId:   item.productId,
+        productName: item.product.name,
+        unitPrice:   finalPrice,
+        quantity:    item.quantity,
+        subtotal,
+        appliedDiscountId,
+        logisticsCategoryId: item.product.logisticsCategoryId,
+        product: item.product,
+      });
+    }
+
+    // ── PHASE 2: SHIPPING VERIFICATION ──────────────────
+    let address = null;
+    let shippingSnapshot = null;
+    let shippingFee = 0;
+    const normalizedShippingMethod = String(shippingMethod).toLowerCase() === "shipping" ? "SHIPPING" : "pickup";
+
+    if (normalizedShippingMethod === "SHIPPING") {
+      if (!shippingAddressId) throw new Error("Shipping address is required");
+
+      address = await Address.findOne({
+        where: { id: shippingAddressId, userId, isDeleted: false },
+      });
+      if (!address) throw new Error("Shipping address not found");
+
+      if (shippingProvider === 'internal') {
+        const totalWeight = items.reduce((sum, it) => sum + (it.product?.weightKg || 0) * it.quantity, 0);
+        const origin = { latitude: 6.5244, longitude: 3.3792 }; // Default Lagos Hub
+        const destination = { latitude: parseFloat(address.latitude), longitude: parseFloat(address.longitude) };
+
+        shippingFee = await shippingManager.getProvider('internal').getQuote(origin, destination, totalWeight)
+          .then(q => q.price);
+
+        shippingSnapshot = {
+          fullName: user.name || user.fullName || "Customer",
+          phone: phone || user.phone,
+          addressLine1: address.addressLine1,
+          addressLine2: address.addressLine2 || null,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode,
+          country: address.country,
+          courier: {
+            id: 'internal',
+            name: 'Karakata Internal',
+            rawFee: shippingFee,
+            markupAmount: 0,
+            totalFee: shippingFee,
+            estimatedDays: '1-2',
+          },
+        };
+      } else {
+        if (!requestToken)      throw new Error("Request token is required to verify shipping rate");
+        if (!courierId)         throw new Error("Courier selection is required");
+
+        let rateData;
+        try {
+          rateData = await ShipBubbleAdapter.getRates({ requestToken });
+        } catch (tokenErr) {
+          const packageItems = items.map(it => ({
+            name: it.productName,
+            description: it.productName,
+            unit_weight: String(it.product?.weightKg || 0),
+            unit_amount: String(it.unitPrice),
+            quantity: String(it.quantity),
+          }));
+          const dimensions = {
+            length: Math.max(...items.map(it => it.product?.lengthCm || 0), 10),
+            width: Math.max(...items.map(it => it.product?.widthCm || 0), 10),
+            height: Math.max(...items.map(it => it.product?.heightCm || 0), 10),
+          };
+          const categoryId = items[0].logisticsCategoryId;
+          if (!categoryId) throw new Error(`Logistics category missing for ${items[0].productName}`);
+          rateData = await LogisticsService.getShippingRates({
+            receiverAddressId: shippingAddressId,
+            packageItems,
+            packageDimension: dimensions,
+            categoryId: categoryId,
+          });
+        }
+
+        const selectedCourier = rateData?.couriers?.find(c => String(c.id) === String(courierId));
+        if (!selectedCourier) throw new Error("Selected courier is no longer available.");
+
+        const setting = await SystemSetting.findOne();
+        const markupRate = (setting?.shippingMarkupPercent || 0) / 100;
+        const rawFee = selectedCourier.fee;
+        const markupAmount = parseFloat((rawFee * markupRate).toFixed(2));
+        shippingFee = parseFloat((rawFee + markupAmount).toFixed(2));
+
+        shippingSnapshot = {
+          fullName: user.name || user.fullName || "Customer",
+          phone: phone || user.phone,
+          addressLine1: address.addressLine1,
+          addressLine2: address.addressLine2 || null,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode,
+          country: address.country,
+          courier: {
+            id: selectedCourier.id,
+            name: selectedCourier.name,
+            rawFee: rawFee,
+            markupAmount: markupAmount,
+            totalFee: shippingFee,
+            estimatedDays: selectedCourier.estimated_days || null,
+          },
+        };
+      }
+    } else if (normalizedShippingMethod === "pickup") {
+      if (!chosenStationId) throw new Error("Pickup station selection is required");
+      shippingFee = 0;
+    }
+
+    let appliedDiscount = null;
+    let discountAmount = 0;
+    if (discountCode) {
+      appliedDiscount = await DiscountService.validate(discountCode, 0);
+    }
+
+    const allocationsMap = {};
+    const reservationItems = [];
+    for (const item of items) {
+      const preference = normalizedShippingMethod === "pickup"
+        ? { chosenStationId }
+        : { receiverAddress: address };
+
+      const { allocations, fetchRate } = await SourcingService.allocateStock(
+        item.productId,
+        item.quantity,
+        preference
+      );
+
+      allocationsMap[item.productId] = allocations;
+      if (normalizedShippingMethod === "SHIPPING") {
+        shippingFee += fetchRate;
+      }
+
+      for (const alloc of allocations) {
+        reservationItems.push({
+          productId: item.productId,
+          pickupStationId: alloc.pickupStationId,
+          quantity: alloc.quantity
+        });
+      }
+    }
+
+    const finalGrandTotal = productTotal - discountAmount + shippingFee;
+
+    const t = await sequelize.transaction();
+    let committed = false;
+    let createdOrder = null;
+
+    try {
+      const lockedCart = await Cart.findOne({
+        where: { userId },
+        include: [{ model: CartItem, as: "items" }],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      if (!lockedCart || lockedCart.items.length === 0) throw new Error("Cart is empty");
+      if (lockedCart.items.length !== items.length) {
+        throw new Error("Cart has changed. Please review your items and try again.");
+      }
+
+      await InventoryService.reserveForOrder(reservationItems, t);
+
+      const order = await this._createOrderWithItems(userId, {
+        items,
+        totalAmount: finalGrandTotal,
+        shippingAddressId: address?.id || null,
+        shippingSnapshot,
+        phone,
+        notes,
+        gateway,
+        shippingMethod: normalizedShippingMethod,
+        logisticsRequestToken: requestToken || null,
+        logisticsServiceCode: serviceCode || null,
+        logisticsCourierId: courierId || null,
+        shippingFee,
+        discountCode: appliedDiscount?.code || null,
+        discountAmount,
+        allocationsMap,
+      }, t);
+
+      await Payment.create({
+        orderId: order.id,
+        userId: userId,
+        gateway: gateway,
+        amount: finalGrandTotal,
+        status: 'PENDING'
+      }, { transaction: t });
+
+      if (appliedDiscount) {
+        await DiscountService.incrementUsage(appliedDiscount.id, t);
+      }
+      await NotificationService.orderPlaced(userId, order.id, finalGrandTotal, t);
+
+      await t.commit();
+      committed = true;
+      createdOrder = order;
+    } catch (err) {
+      if (!committed) await t.rollback();
+      throw err;
+    }
+
+    const paymentInit = await PaymentService.initialize({
+      order: { id: createdOrder.id, totalAmount: finalGrandTotal },
+      user,
+      gateway,
+      email: email || user.email,
+      redirectUrl: process.env.BACKEND_BASE_URL,
+    });
+
+    await createdOrder.update({
+      paymentReference: paymentInit.paymentReference,
+      paymentGateway: gateway,
+    });
+
+    await Payment.update(
+      {
+        reference: paymentInit.paymentReference,
+        paymentUrl: paymentInit.paymentUrl
+      },
+      { where: { orderId: createdOrder.id, status: 'PENDING' } }
+    );
+
+    return { order: createdOrder, paymentUrl: paymentInit.paymentUrl };
+  }
+
+  async verify(orderId) {
+    const order = await Order.findByPk(orderId, {
+      include: [{ model: OrderItem, as: "items", include: [{ model: OrderItemFulfillment, as: "fulfillments" }] }]
+    });
+    if (!order) throw new Error("Order not found");
+
+    const verified = await PaymentService.verifyPayment({
+      reference: order.paymentReference,
+      gateway: order.paymentGateway,
+    });
+
+    order.status = verified ? "PAID" : "FAILED";
+    await order.save();
+
+    if (verified) {
+      await NotificationService.orderPaid(order.userId, order.id);
+
+      const t = await sequelize.transaction();
+      try {
+        const inventoryDeductions = [];
+        for (const item of order.items) {
+          if (item.fulfillments) {
+            for (const f of item.fulfillments) {
+              inventoryDeductions.push({
+                productId: item.productId,
+                pickupStationId: f.pickupStationId,
+                quantity: f.quantity
+              });
+            }
+          }
+        }
+
+        await InventoryService.commitForOrder(inventoryDeductions, t);
+        await WalletService.creditOnPayment(order, t);
+        await t.commit();
+      } catch (invErr) {
+        await t.rollback();
+        console.error(`❌ Post-payment processing failed for order ${order.id}:`, invErr.message);
+      }
+
+      if (order.shippingMethod === "SHIPPING") {
+        try {
+          // Instead of just LogisticsService, we use a more generic shipment creation
+          // that takes into account the provider.
+
+          // Note: In a full implementation, this would call a ShipmentService.create()
+          // For now, we keep the existing LogisticsService call but we should update it
+          // to support 'internal' shipments.
+          await LogisticsService.createShipment({
+            orderId:      order.id,
+            requestToken: order.logisticsRequestToken,
+            serviceCode:  order.logisticsServiceCode,
+            courierId:    order.logisticsCourierId,
+            courierName:  null,
+            shippingFee:  order.shippingFee,
+            trackingLevel:  null,
+            deliveryEta:    null,
+            insuranceCode:  null,
+          });
+        } catch (logisticsError) {
+          console.error(`❌ Logistics failure for order ${order.id}:`, logisticsError.message);
+        }
+      }
+    }
+
+    return { order, verified };
+  }
+
+  async getInvoice(orderId, userId) {
+    const order = await Order.findByPk(orderId, {
+      attributes: ["id", "userId", "totalAmount", "shippingFee", "status", "logisticsStatus", "createdAt", "discountId"],
+      include: [
+        {
+          model: Address,
+          as: "shippingAddress",
+          attributes: ["addressLine1", "addressLine2", "city", "state", "postalCode", "country"],
+        },
+        {
+          model: Discount,
+          as: "globalDiscount",
+          attributes: ["id", "code", "type", "value"],
+        },
+        {
+          model: OrderItem,
+          as: "items",
+          attributes: ["id", "quantity", "price"],
+          include: [
+            {
+              model: Product,
+              as: "product",
+              attributes: ["id", "name"],
+              include: [
+                {
+                  model: ProductImage,
+                  as: "images",
+                  attributes: ["url"],
+                },
+              ],
+            },
+            {
+              model: ProductDiscount,
+              as: "itemDiscount",
+              attributes: ["id", "value"],
+            },
+            {
+              model: OrderItemFulfillment,
+              as: "fulfillments",
+              attributes: ["pickupStationId", "quantity"]
+            }
+          ],
+        },
+        {
+          model: Payment,
+          as: "payment",
+          attributes: ["id", "amount", "status"],
+        },
+      ],
+    });
+
+    if (!order) throw new Error("Order not found");
+
+    if (order.status !== "PAID" && order.userId !== userId) {
+      throw new Error("Unauthorized access to this order");
+    }
+
+    return {
+      order: {
+        id:              order.id,
+        totalAmount:     order.totalAmount,
+        shippingFee:     order.shippingFee,
+        status:          order.status,
+        logisticsStatus: order.logisticsStatus,
+        createdAt:       order.createdAt,
+        discount: order.globalDiscount ? {
+          code: order.globalDiscount.code,
+          type: order.globalDiscount.type,
+          value: order.globalDiscount.value,
+        } : null,
+        shippingAddress: order.shippingAddress ? {
+          fullName: "Customer",
+          address: `${order.shippingAddress.addressLine1}${order.shippingAddress.addressLine2 ? `, ${order.shippingAddress.addressLine2}` : ''}, ${order.shippingAddress.city}, ${order.shippingAddress.state}, ${order.shippingAddress.postalCode}, ${order.shippingAddress.country}`,
+          phone: "N/A",
+          email: "N/A",
+        } : null,
+      },
+      items: order.items.map(item => {
+        const subtotal = item.quantity * item.price;
+        return {
+          id:       item.id,
+          quantity: item.quantity,
+          price:    item.price,
+          subtotal: subtotal,
+          discount: item.itemDiscount ? {
+            name: "Product Discount",
+            value: item.itemDiscount.value,
+            type: "PROMOTIONAL",
+          } : null,
+          product: {
+            id:    item.product?.id,
+            name:  item.product?.name,
+            image: item.product?.images?.[0]?.url || null,
+          },
+          fulfillments: item.fulfillments
+        };
+      }),
+      payment: order.payment,
+    };
+  }
+}
+
+module.exports = new OrderServices();

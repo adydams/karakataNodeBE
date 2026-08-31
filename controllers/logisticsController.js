@@ -16,7 +16,7 @@ class LogisticsController {
    * }
    */
   async getRates(req, res) {
-  try {
+    try {
     const {
       shippingAddressId,
       packageItems,
@@ -25,18 +25,21 @@ class LogisticsController {
       pickupDate,
       serviceType,
     } = req.body;
-
+    
+    console.log("[LogisticsController] getRates called", req.body);
     // ✅ VALIDATION
-    if (
-      !shippingAddressId ||
-      !Array.isArray(packageItems) ||
-      packageItems.length === 0 ||
-      !packageDimension ||
-      !categoryId
-    ) {
+    const missingFields = [];
+    if (!shippingAddressId) missingFields.push("shippingAddressId");
+    if (!Array.isArray(packageItems) || packageItems.length === 0) missingFields.push("packageItems");
+    if (!packageDimension) missingFields.push("packageDimension");
+    if (!categoryId) {
+      console.warn("[LogisticsController] categoryId missing, service will use fallback");
+    }
+
+    if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid request payload",
+        message: `Invalid request payload. Missing fields: ${missingFields.join(", ")}`,
       });
     }
 

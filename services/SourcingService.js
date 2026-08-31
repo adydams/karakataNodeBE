@@ -1,9 +1,4 @@
-const {
-  Product,
-  ProductPickupStation,
-  Inventory,
-  StorePickupStation
-} = require("../models");
+const { Inventory, StorePickupStation } = require("../models");
 
 class SourcingService {
   /**
@@ -17,12 +12,16 @@ class SourcingService {
     const { receiverAddress, chosenStationId } = preference;
 
     // 1. Get all stations that have this product
-    const productStations = await ProductPickupStation.findAll({
-      where: { productId, isActive: true },
+    const productStations = await Inventory.findAll({
+      where: { productId, isDeleted: false },
       include: [
-        { model: StorePickupStation, as: 'station' },
-        { model: Inventory, as: 'inventory' }
-      ]
+        {
+          model: StorePickupStation,
+          as: "pickupStation",
+          required: true,
+          where: { isDeleted: false },
+        },
+      ],
     });
 
     if (productStations.length === 0) {
@@ -35,15 +34,15 @@ class SourcingService {
 
     // Case B: Customer Pickup (Priority: Chosen Station)
     if (chosenStationId) {
-      const chosen = productStations.find(ps => ps.pickupStationId === chosenStationId);
+      const chosen = productStations.find((ps) => ps.pickupStationId === chosenStationId);
       if (chosen) {
-        const stock = chosen.inventory ? (chosen.inventory.quantityOnHand - chosen.inventory.quantityReserved) : 0;
+        const stock = chosen.quantityOnHand - chosen.quantityReserved;
         const taken = Math.min(stock, remainingNeeded);
         if (taken > 0) {
           allocations.push({
             pickupStationId: chosen.pickupStationId,
             quantity: taken,
-            stationName: chosen.station.name
+            stationName: chosen.pickupStation.name,
           });
           remainingNeeded -= taken;
         }
@@ -58,7 +57,7 @@ class SourcingService {
         if (remainingNeeded <= 0) break;
 
         const alreadyAllocated = allocations.find(a => a.pickupStationId === ps.pickupStationId);
-        const stock = ps.inventory ? (ps.inventory.quantityOnHand - ps.inventory.quantityReserved) : 0;
+        const stock = ps.quantityOnHand - ps.quantityReserved;
 
         const available = alreadyAllocated ? 0 : stock;
         const taken = Math.min(available, remainingNeeded);
@@ -67,12 +66,12 @@ class SourcingService {
           allocations.push({
             pickupStationId: ps.pickupStationId,
             quantity: taken,
-            stationName: ps.station.name
+            stationName: ps.pickupStation.name
           });
           remainingNeeded -= taken;
 
           if (receiverAddress) {
-            totalFetchRate += this._calculateFetchRate(ps.station, receiverAddress, taken);
+            totalFetchRate += this._calculateFetchRate(ps.pickupStation, receiverAddress, taken);
           }
         }
       }
@@ -94,8 +93,8 @@ class SourcingService {
     // Placeholder for real distance calculation (e.g. via Google Maps or ShipBubble)
     // For now, we just sort by a mock distance or keep as is.
     return stations.sort((a, b) => {
-      const distA = this._mockDistance(a.station, receiverAddress);
-      const distB = this._mockDistance(b.station, receiverAddress);
+      const distA = this._mockDistance(a.pickupStation, receiverAddress);
+      const distB = this._mockDistance(b.pickupStation, receiverAddress);
       return distA - distB;
     });
   }

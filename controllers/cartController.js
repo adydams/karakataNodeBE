@@ -5,10 +5,17 @@ const { Cart } = require("../models");
 
 exports.createCart = async (req, res) => {
   try {
-    console.log("Creating cart for user:", req.user.id);
-    const userId  = req.user.id;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
     if (!userId) {
       return res.status(400).json({ success: false, error: "user login required" });
+    }
+
+    // Admins should not have carts
+    const adminRoles = ["SuperAdmin", "SystemAdmin", "Admin"];
+    if (adminRoles.includes(userRole)) {
+      return res.status(204).send(); // No content, but not an error
     }
     
     const anyCart = await Cart.findOne({
@@ -30,6 +37,17 @@ exports.createCart = async (req, res) => {
 exports.getCart = async (req, res) => {
   try {
     const { id } = req.params;
+    const userRole = req.user.role;
+
+    // Admins should not access carts
+    const adminRoles = ["SuperAdmin", "SystemAdmin", "Admin"];
+    if (adminRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        error: "Administrative accounts are not permitted to access carts."
+      });
+    }
+
     const cart = await cartService.getCartById(id,{
       include :[{model: CartItem, as: "items"}]
     });

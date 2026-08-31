@@ -13,7 +13,31 @@ exports.updateProfile = async (req, res) => {
   res.json({ success: true, data: me });
 };
 
+exports.getActivity = async (req, res) => {
+  try {
+    const activity = await userService.getActivity(req.user.id);
+    res.json({ success: true, data: activity });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.uploadProfilePicture = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No image file uploaded" });
+    }
+    const pictureUrl = req.file.path;
+    const user = await userService.updateProfilePicture(req.user.id, pictureUrl);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    res.json({ success: true, data: { profilePicture: pictureUrl }, message: "Profile picture updated successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.addAddress = async (req, res) => {
+
   const addr = await userService.addAddress(req.user.id, req.body);
   res.status(201).json({ success: true, data: addr });
 };

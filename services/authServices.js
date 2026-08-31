@@ -2,10 +2,11 @@
 const User = require('../models/userModel');
 const Cart = require('../models/cartModel');
 const Role = require('../models/roleModel');
+const Permission = require('../models/permissionModel');
 const Store = require('../models/storeModel');
 const crypto = require("crypto");
 
-const emailService = require('./emailServices');
+const emailService = require('./emailService');
 const { hashPassword, comparePassword } = require('../utils/passwords');
 const { signToken } = require('../utils/jwt');
 const bcrypt = require("bcryptjs");
@@ -40,6 +41,7 @@ class AuthServices {
     phone,
     passwordHash,
     roleId: customerRole.id, // ✅ IMPORTANT FIX
+    isActive: true, // Bypass verification for test/demo
   });
   await User.update(
   {
@@ -53,7 +55,7 @@ class AuthServices {
     role: "Customer", // or customerRole.name
   });
 
-  const verifyUrl = `${process.env.API_URL}/api/auth/verify-email?token=${verificationToken}`;
+  const verifyUrl = `${process.env.API_URL}/api/auth/verify-email?token=${resetToken}`;
   await emailService.sendEmail({
     to: user.email,
     subject: "Set Your Password",
@@ -311,7 +313,7 @@ class AuthServices {
     // 1) If there's a user with same provider+providerId
     user = await User.findOne({ where: { provider, providerId } });
     if (user) {
-      const token = signToken({ id: user.id, role: user.role });
+      const token = signToken({ id: user.id, role: user.role?.name || "Customer" });
       return { user, token };
     }
 
@@ -322,30 +324,40 @@ class AuthServices {
         user.provider = provider;
         user.providerId = providerId;
         await user.save();
-        const token = signToken({ id: user.id, role: user.role });
+        const token = signToken({ id: user.id, role: user.role?.name || "Customer" });
         return { user, token };
       }
     }
 
     // 3) Otherwise create new user
     const name = profile.displayName || (email ? email.split('@')[0] : 'NoName');
+
+    const customerRole = await Role.findOne({ where: { name: "Customer" } });
+    if (!customerRole) {
+      throw new Error("Customer role not found in system");
+    }
+
     user = await User.create({
       name,
       email: email || null,
       phone: null,
       passwordHash: null,
-      role: 'user',
+      roleId: customerRole.id,
       provider,
       providerId
     });
-    const token = signToken({ id: user.id, role: user.role });
+    const token = signToken({ id: user.id, role: "Customer" });
     return { user, token };
   }
 
   // get user by id (for /me)
   async getById(id) {
     return await User.findByPk(id, {
-      include: [{ model: Role, as: 'role' }],
+      include: [{
+        model: Role,
+        as: 'role',
+        include: [{ model: Permission, as: 'permissions' }],
+      }],
       attributes: { exclude: ['passwordHash'] }
     });
   }

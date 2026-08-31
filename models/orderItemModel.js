@@ -20,6 +20,11 @@ const sequelize = require('../db/database');
   },
   quantity: { type: DataTypes.INTEGER, allowNull: false },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+  productDiscountId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: { model: "ProductDiscounts", key: "id" }
+  },
   isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
 }, {
   tableName: 'orderitems',

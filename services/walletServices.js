@@ -1,6 +1,7 @@
 const { Wallet, WalletTransaction, Payout, Store, SystemSetting } = require("../models");
 const sequelize = require("../db/database");
 const PaymentService = require("./paymentServices"); // Assume this has the Paystack Transfer API wrapper
+const auditService = require("./auditService");
 
 class WalletService {
   /**
@@ -52,6 +53,14 @@ class WalletService {
           { pendingBalance: netAmount },
           { where: { id: wallet.id }, transaction: t }
         );
+
+        await auditService.log({
+          userId: null,
+          action: "WALLET_CREDIT",
+          entityType: "Wallet",
+          entityId: wallet.id,
+          newValue: { pendingBalanceIncrease: netAmount, orderId: order.id }
+        });
       }
 
       if (!transaction) await t.commit();
@@ -90,6 +99,15 @@ class WalletService {
           },
           { where: { id: wt.walletId }, transaction: t }
         );
+
+        await auditService.log({
+          userId: null,
+          action: "WALLET_SETTLEMENT",
+          entityType: "Wallet",
+          entityId: wt.walletId,
+          oldValue: { pendingBalance: "decreased" },
+          newValue: { availableBalance: "increased", amount: net }
+        });
       }
       await t.commit();
       return matured.length;

@@ -39,11 +39,27 @@ const SystemSetting = sequelize.define(
       defaultValue: 1000.00,
       allowNull: false,
     },
+    internalBaseFee: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 1000.00,
+      allowNull: false,
+    },
+    internalPricePerKm: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 100.00,
+      allowNull: false,
+    },
+    internalPricePerKg: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 50.00,
+      allowNull: false,
+    },
   },
   {
     tableName: "system_settings",
     timestamps: true,
   }
+
 );
 
 module.exports = SystemSetting;

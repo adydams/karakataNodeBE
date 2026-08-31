@@ -3,18 +3,11 @@ const passport = require("passport");
 const Role = require("../models/roleModel");
 const User = require("../models/userModel");
 const { Op } = require("sequelize");
+const auditService = require("../services/auditService");
 
 exports.filterAdmins = async (req, res) => {
   try {
-    const {
-      roleName,
-      name,
-      phone,
-      email,
-      page = 1,
-      limit = 10,
-    } = req.query;
-
+    const { roleName, name, phone, email, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
     const filters = {};
 
@@ -54,40 +47,27 @@ exports.filterAdmins = async (req, res) => {
   }
 };
 
-
 exports.getAllAdmins = async (req, res) => {
   try {
-    const {
-      roleName = "Admin", // default role filter
-      name,
-      phone,
-      email,
-      page = 1,
-      limit = 10,
-    } = req.query;
-     //console.log("req.query.limit")
-    //console.log(req.query.limit)
+    const { roleName = "Admin", name, phone, email, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
-
-    // Build filters dynamically
     const filters = {};
+
     if (name) filters.name = { [Op.like]: `%${name}%` };
     if (phone) filters.phone = { [Op.like]: `%${phone}%` };
     if (email) filters.email = { [Op.like]: `%${email}%` };
 
-    // Include Role model and apply role filter if provided
     const include = [
       {
         model: Role,
         as: "role",
-        attributes: ["id", "role", "description"],
+        attributes: ["id", "name", "description"],
         ...(roleName
-          ? { where: { role: { [Op.like]: `%${roleName}%` } }, required: true }
+          ? { where: { name: { [Op.like]: `%${roleName}%` } }, required: true }
           : { required: false }),
       },
     ];
 
-    // Query users with pagination and filters
     const { rows, count } = await User.findAndCountAll({
       where: filters,
       include,
@@ -111,9 +91,8 @@ exports.getAllAdmins = async (req, res) => {
 
 exports.Adminlogin = async (req, res) => {
   try {
-    //console.log("Admin Login attempt controller:", req.body);
     const { email, password } = req.body;
-     const result = await authService.login({ email, password });
+    const result = await authService.login({ email, password });
 
     if (result.mustVerifyAccount) {
       return res.status(200).json({
@@ -135,27 +114,9 @@ exports.Adminlogin = async (req, res) => {
   }
 };
 
-
-
-
 exports.onboardAdmin = async (req, res) => {
   try {
-  
-    // ✅ Check SuperAdmin permission based on role name
-    // if (!req.user || req.user.role !== "SuperAdmin") {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: "Access denied. Only SuperAdmin can onboard Admin users.",
-    //   });
-    // }
-
-
-
-
     const { name, email, phone, password } = req.body;
-    // const staticPassword = "Admin@123";
-    console.log("Onboarding Admin with data:", { name, email, phone, password });
-    // ✅ Fetch the Admin roleId from the database
     const adminRole = await Role.findOne({ where: { name: "Admin" } });
     if (!adminRole) {
       return res.status(404).json({
@@ -164,76 +125,37 @@ exports.onboardAdmin = async (req, res) => {
       });
     }
 
-    // ✅ Register the admin user using the Admin roleId
     const { user, token } = await authService.register({
       name,
       email,
       phone,
-      password: password ,
-      roleId: adminRole.id, // Use UUID roleId
-    });
-    console.log("Admin onboarded successfully:", user);
-
-        res.status(201).json({
-          success: true,
-          message: "Admin user onboarded successfully",
-          user,
-          token,
-        });
-      } catch (err) {
-        console.error("❌ Onboarding error:", err);
-        res.status(400).json({
-          success: false,
-          message: err.message,
-        });
-      }
-    };
-
-
-// ✅ Get all Admins with pagination and role info
-exports.getAllAdmins = async (req, res) => {
-
-  try {
-    
-    // Pagination setup
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
-
-    // Fetch only users with "Admin" or "SystemAdmin" roles
-    const admins = await User.findAndCountAll({
-      include: [
-        {
-          model: Role,
-          as: "role",
-          attributes: ["name"],
-          where: { name: ["Admin", "SystemAdmin"] }, // ✅ Optional filter
-        },
-      ],
-      attributes: { exclude: ["passwordHash"] }, // ✅ Hide password
-      limit,
-      offset,
-      order: [["createdAt", "DESC"]],
+      password: password,
+      roleId: adminRole.id,
     });
 
-    // Pagination metadata
-    const totalPages = Math.ceil(admins.count / limit);
+    await auditService.log({
+      userId: req.user?.id,
+      action: "ONBOARD_ADMIN",
+      entityType: "User",
+      entityId: user.id,
+      newValue: { name, email, phone },
+    });
 
-    res.json({
+    res.status(201).json({
       success: true,
-      currentPage: page,
-      totalPages,
-      totalAdmins: admins.count,
-      admins: admins.rows,
+      message: "Admin user onboarded successfully",
+      user,
+      token,
     });
   } catch (err) {
-    console.error("❌ Error fetching admins:", err);
-    res.status(500).json({ success: false, message: err.message });
+    console.error("❌ Onboarding error:", err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 
-
-// ✅ Get Admin by ID
 exports.getAdminById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -242,13 +164,18 @@ exports.getAdminById = async (req, res) => {
       return res.status(404).json({ success: false, message: "Admin not found" });
     }
 
-    // Format response to be consistent with login and other admin endpoints
     const formattedUser = {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role?.name || null,
+      permissions: user.role?.permissions || [],
       isActive: user.isActive,
+      phone: user.phone,
+      profilePicture: user.profilePicture,
+      department: user.department,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     };
 
     res.json({ success: true, user: formattedUser });
@@ -257,19 +184,28 @@ exports.getAdminById = async (req, res) => {
   }
 };
 
-// ✅ Update Admin info
 exports.updateAdmin = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
+    const oldUser = await User.findByPk(id);
     const updatedUser = await authService.updateUser(id, updates);
+
+    await auditService.log({
+      userId: req.user?.id,
+      action: "UPDATE_ADMIN",
+      entityType: "User",
+      entityId: id,
+      oldValue: oldUser,
+      newValue: updatedUser,
+    });
+
     res.json({ success: true, message: "Admin updated successfully", user: updatedUser });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
 };
 
-// ✅ Update Admin role
 exports.updateAdminRole = async (req, res) => {
   try {
     const { id } = req.params;
@@ -280,20 +216,41 @@ exports.updateAdminRole = async (req, res) => {
       return res.status(404).json({ success: false, message: "Role not found" });
     }
 
+    const oldUser = await User.findByPk(id);
     const updatedUser = await authService.updateUser(id, { roleId: roleRecord.id });
+
+    await auditService.log({
+      userId: req.user?.id,
+      action: "UPDATE_ADMIN_ROLE",
+      entityType: "User",
+      entityId: id,
+      oldValue: { roleId: oldUser?.roleId },
+      newValue: { roleId: roleRecord.id },
+    });
+
     res.json({ success: true, message: "Admin role updated successfully", user: updatedUser });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
 };
 
-// ✅ Activate / Deactivate Admin
 exports.updateAdminStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;
 
+    const oldUser = await User.findByPk(id);
     const updatedUser = await authService.updateUser(id, { isActive });
+
+    await auditService.log({
+      userId: req.user?.id,
+      action: "UPDATE_ADMIN_STATUS",
+      entityType: "User",
+      entityId: id,
+      oldValue: { isActive: oldUser?.isActive },
+      newValue: { isActive },
+    });
+
     res.json({
       success: true,
       message: `Admin account ${isActive ? "activated" : "deactivated"} successfully`,
@@ -304,17 +261,25 @@ exports.updateAdminStatus = async (req, res) => {
   }
 };
 
-// ✅ Delete Admin
 exports.deleteAdmin = async (req, res) => {
   try {
     const { id } = req.params;
+    const oldUser = await User.findByPk(id);
     await authService.deleteUser(id);
+
+    await auditService.log({
+      userId: req.user?.id,
+      action: "DELETE_ADMIN",
+      entityType: "User",
+      entityId: id,
+      oldValue: oldUser,
+    });
+
     res.json({ success: true, message: "Admin deleted successfully" });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
 };
-
 
 exports.me = async (req, res) => {
   try {

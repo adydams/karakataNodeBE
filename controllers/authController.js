@@ -1,10 +1,17 @@
 const authService = require("../services/authServices");
 const passport = require("passport");
+const emailService = require("../services/emailService");
 
 exports.register = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
     const { user, token } = await authService.register({ name, email, phone, password });
+
+    // Send welcome email
+    emailService.sendWelcomeEmail(user.email, user.name).catch(err =>
+      console.error("Welcome email error:", err)
+    );
+
     res.status(201).json({ success: true, user, token });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -42,6 +49,11 @@ exports.login = async (req, res) => {
         email: result.email
       });
     }
+
+    // Send login alert email
+    emailService.sendLoginAlert(result.user.email).catch(err =>
+      console.error("Login alert email error:", err)
+    );
 
     return res.status(200).json({
       success: true,
@@ -102,6 +114,25 @@ exports.me = async (req, res) => {
   try {
     const user = await authService.getById(req.user.id);
     res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const updates = req.body;
+    const updatedUser = await authService.updateUser(userId, updates);
+    res.json({ success: true, user: updatedUser });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    res.json({ success: true, message: "Logged out successfully" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

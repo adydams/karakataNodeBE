@@ -138,7 +138,7 @@
 const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
-const { auth } = require("../middlewares/auth");
+const { auth, optionalAuth } = require("../middlewares/auth");
 
 /**
  * @swagger
@@ -231,6 +231,24 @@ const { auth } = require("../middlewares/auth");
  *       401:
  *         description: Unauthorized
  */
+
+router.get(
+  "/",
+  auth,
+  (req, res) => orderController.getOrders(req, res)
+);
+
+router.get(
+  "/summary",
+  auth,
+  (req, res) => orderController.getSummary(req, res)
+);
+
+router.post(
+  "/checkout",
+  auth,
+  (req, res) => orderController.checkout(req, res)
+);
 
 /**
  * @swagger
@@ -332,9 +350,15 @@ router.post(
  *         description: Internal server error
  */
 router.get(
-  "/:orderId/invoice",
-  auth,
+  "/invoice/:orderId",
+  optionalAuth,
   (req, res) => orderController.getInvoice(req, res)
+);
+
+router.get(
+  "/invoice/:orderId/pdf",
+  optionalAuth,
+  (req, res) => orderController.getInvoicePdf(req, res)
 );
 
 module.exports = router;

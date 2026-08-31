@@ -44,7 +44,14 @@ const Address = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-
+    latitude: {
+      type: DataTypes.DECIMAL(10, 8),
+      allowNull: true,
+    },
+    longitude: {
+      type: DataTypes.DECIMAL(11, 8),
+      allowNull: true,
+    },
     // ShipBubble validated code
     shipbubbleAddressCode: {
       type: DataTypes.BIGINT,

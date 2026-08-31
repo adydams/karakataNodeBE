@@ -1,111 +1,93 @@
 // services/paymentServices.js
 const axios = require('axios');
+const auditService = require('./auditService');
+const notificationService = require('./notificationService');
+const emailService = require('./emailService');
+// OrderServices required locally to avoid circular dependency
 
-const { sequelize , Order, Payment, User} = require('../models');
+const { Order, Payment, User, Cart, CartItem} = require('../models');
 
 class PaymentServices {
 
   async initialize({ order, user, gateway, redirectUrl }) {
-     //console.log("🚀 Initializing payment...");
-    //console.log("Gateway:", gateway);
-    //console.log("Order ID:", order.id);
-    //console.log("User email:", user.email);
-  if (!order) throw new Error('Order required');
-  if (!user) throw new Error('User required');
+    if (!order) throw new Error('Order required');
+    if (!user) throw new Error('User required');
 
-  gateway = gateway?.toLowerCase();
-  const payment = await Payment.create({
-    orderId: order.id,
-    userId: user.id,
-    gateway,
-    amount: order.totalAmount,
-    currency: 'NGN',
-    status: 'PENDING'
-  });
-  
-  if (gateway === 'paystack') {
-    const payload = {
-      email: user.email || 'adydams@gmail.com',
-      amount: Math.round(order.totalAmount * 100),
-      reference: `order_${order.id}_${Date.now()}`,
-      callback_url: `${redirectUrl}/api/payments/verify?gateway=paystack&orderId=${order.id}`
-    };
+    gateway = gateway?.toLowerCase();
 
-    
-    const res = await axios.post(
-       `${process.env.PAYSTACK_URL}/transaction/initialize`,
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        },
-      }
-    );
+    if (gateway === 'paystack') {
+      const payload = {
+        email: user.email || 'adydams@gmail.com',
+        amount: Math.round(order.totalAmount * 100),
+        reference: `order_${order.id}_${Date.now()}`,
+        callback_url: `${redirectUrl}/api/payments/verify?gateway=paystack&orderId=${order.id}`
+      };
 
-    if (!res.data?.status) throw new Error('Paystack init failed');
+      const res = await axios.post(
+         `${process.env.PAYSTACK_URL}/transaction/initialize`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
+        }
+      );
 
-    payment.reference = res.data.data.reference;
-    payment.paymentUrl = res.data.data.authorization_url; 
-    payment.rawResponse = res.data;
-    await payment.save();
+      if (!res.data?.status) throw new Error('Paystack init failed');
 
-    return {
-      paymentUrl: res.data.data.authorization_url,
-      payment
-    };
-  }
-
-  if (gateway === 'flutterwave') {
-    const tx_ref = `order_${order.id}_${Date.now()}`;
-
-    const res = await axios.post(
-      `${process.env.FLUTTERWAVE_URL}/v3/payments`,
-      {
-        tx_ref,
-        amount: order.totalAmount,
-        currency: 'NGN',
-        redirect_url: `${redirectUrl}/api/payments/verify?gateway=flutterwave&orderId=${order.id}`,
-        customer: {
-          email: user.email || 'no-reply@example.com',
-          name: user.name || 'Customer'
-        },
-        meta: { orderId: order.id }
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
-        },
-      }
-    );
-
-    if (!res.data || res.data.status !== 'success') {
-      throw new Error('Flutterwave init failed');
+      return {
+        paymentUrl: res.data.data.authorization_url,
+        paymentReference: res.data.data.reference,
+        rawResponse: res.data
+      };
     }
 
-    payment.reference = tx_ref;
-    payment.paymentUrl = res.data.data.link; 
-    payment.rawResponse = res.data;
-    //console.log("🔗 Payment URL:", payment.paymentUrl);
-    await payment.save();
+    if (gateway === 'flutterwave') {
+      const tx_ref = `order_${order.id}_${Date.now()}`;
 
-    return {
-      paymentUrl: res.data.data.link,
-      payment
-    };
-  } 
+      const res = await axios.post(
+        `${process.env.FLUTTERWAVE_URL}/v3/payments`,
+        {
+          tx_ref,
+          amount: order.totalAmount,
+          currency: 'NGN',
+          redirect_url: `${redirectUrl}/api/payments/verify?gateway=flutterwave&orderId=${order.id}`,
+          customer: {
+            email: user.email || 'no-reply@example.com',
+            name: user.name || 'Customer'
+          },
+          customizations: {
+            title: "Karakata Commerce",
+            description: "Payment for Order #" + order.id
+          },
+          meta: { orderId: order.id }
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
+          },
+        }
+      );
 
-  throw new Error(`Unsupported payment gateway: ${gateway}`);
-}
+      if (!res.data || res.data.status !== 'success') {
+        throw new Error('Flutterwave init failed');
+      }
 
-  
+      return {
+        paymentUrl: res.data.data.link,
+        paymentReference: tx_ref,
+        rawResponse: res.data
+      };
+    }
 
-  // verify by calling gateway API (used by manual verify endpoint)
+    throw new Error(`Unsupported payment gateway: ${gateway}`);
+  }
+
   async verify({ gateway, reference }) {
     if (gateway === 'paystack') {
       const res = await axios.get(`${process.env.PAYSTACK_URL}/transaction/verify/${reference}`, {
         headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` }
       });
-      //console.log("Paystack verify response endpoint:", res.data);
       const success = res.data && res.data.data && res.data.data.status === 'success';
       return { success, raw: res.data };
     }
@@ -121,159 +103,183 @@ class PaymentServices {
     return { success: false };
   }
 
-  // // process webhook payload (internal update)
-  // async handleWebhookPaystack(rawBody, signatureHeader) {
-  //   // verify signature using PAYSTACK_WEBHOOK_SECRET (HMAC SHA512)
-  //   const crypto = require('crypto');
-  //   const secret = process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY;
-  //   const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
-
-  //   if (signatureHeader !== hash) {
-  //     throw new Error('Invalid Paystack signature');
-  //   }
-
-  //   const payload = JSON.parse(rawBody);
-  //   const event = payload.event;
-  //   const data = payload.data;
-
-  //   // find payment by reference
-  //   const reference = data.reference;
-  //   const payment = await Payment.findOne({ where: { reference } });
-  //   if (!payment) {
-  //     // optionally create payment record or log
-  //     return { handled: false, reason: 'payment not found for reference' };
-  //   }
-
-  //   if (event === 'charge.success' || (data && data.status === 'success')) {
-  //     payment.status = 'success';
-  //     payment.rawResponse = payload;
-  //     await payment.save();
-  //     // update order
-  //     await Order.update({ paymentStatus: 'paid', status: 'completed', paymentReference: reference }, { where: { id: payment.orderId } });
-  //     return { handled: true };
-  //   }
-
-  //   // other statuses
-  //   if (data && data.status && data.status !== 'success') {
-  //     payment.status = 'failed';
-  //     payment.rawResponse = payload;
-  //     await payment.save();
-  //     await Order.update({ paymentStatus: 'failed', status: 'cancelled', paymentReference: reference }, { where: { id: payment.orderId } });
-  //     return { handled: true };
-  //   }
-
-  //   return { handled: false };
-  // }
   async handleWebhookPaystack(rawBody, signatureHeader) {
-  const crypto = require('crypto');
-  const secret = process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY;
+    const crypto = require('crypto');
+    const secret = process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY;
 
-  const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
+    const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
 
-  //console.log("📩 Webhook received");
-  //console.log("Headers:", req.headers);
-  //console.log("Raw body:", req.body.toString());
-  if (signatureHeader !== hash) {
-    throw new Error('Invalid Paystack signature');
-  }
+    if (signatureHeader !== hash) {
+      await auditService.log({
+        userId: null,
+        action: "PAYMENT_WEBHOOK_SIGNATURE_FAILURE",
+        entityType: "Payment",
+        entityId: "paystack",
+        newValue: { signatureMismatch: true, rawBody: rawBody.slice(0, 100) }
+      });
+      throw new Error('Invalid Paystack signature');
+    }
 
-  //console.log("🔐 Verifying Paystack signature...");
-  //console.log("Incoming signature:", signatureHeader);
-  //console.log("Generated hash:", hash);
-  const payload = JSON.parse(rawBody);
-  const event = payload.event;
-  const data = payload.data;
+    const payload = JSON.parse(rawBody);
+    const event = payload.event;
+    const data = payload.data;
+    const reference = data.reference;
 
-  const reference = data.reference;
+    const payment = await Payment.findOne({ where: { reference } });
 
-  //console.log("📦 Event:", event);
-  //console.log("💳 Reference:", data.reference);
-  //console.log("💵 Amount:", data.amount);
-  //console.log("📧 Customer:", data.customer?.email);
+    if (!payment) {
+      await auditService.log({
+        userId: null,
+        action: "PAYMENT_WEBHOOK_NOT_FOUND",
+        entityType: "Payment",
+        entityId: reference,
+        newValue: { provider: "paystack", event }
+      });
+      return { handled: false };
+    }
 
+    if (payment.status === 'SUCCESS') {
+      return { handled: true };
+    }
 
-  const payment = await Payment.findOne({ where: { reference } });
+    payment.rawResponse = payload;
+    payment.gatewayResponse = {
+      channel: data.channel,
+      paidAt: data.paid_at,
+      currency: data.currency,
+      fees: data.fees,
+      customerEmail: data.customer?.email,
+    };
 
-  //console.log("🧾 Payment found:", payment?.id);
-  //console.log("📌 Order ID:", payment?.orderId);
-  if (!payment) {
-    //console.log("Payment not found for reference:", reference);
-    return { handled: false };
-  }
+    if (event === 'charge.success') {
+      payment.status = 'SUCCESS';
+    } else {
+      payment.status = 'FAILED';
+    }
 
-  // 🔥 Prevent duplicate processing
-  if (payment.status === 'SUCCESS') {
+    await payment.save();
+
+    await Order.update(
+      {
+        status: payment.status === 'SUCCESS' ? 'PAID' : 'FAILED',
+        paymentStatus: payment.status,
+        paymentReference: reference,
+      },
+      { where: { id: payment.orderId } }
+    );
+
+    if (payment.status === 'SUCCESS') {
+      const order = await Order.findByPk(payment.orderId);
+      if (order) {
+        const user = await User.findByPk(order.userId);
+        if (user) {
+          await notificationService.notifyOrderPaid(user, order);
+
+          // Send Invoice Email
+          try {
+            const OrderServices = require('./orderServices');
+            const invoiceData = await OrderServices.prepareInvoiceEmailData(order.id);
+            await emailService.sendInvoiceEmail(user.email, invoiceData);
+          } catch (err) {
+            console.error(`Failed to send invoice email for order ${order.id}:`, err.message);
+          }
+        }
+        const userCart = await Cart.findOne({ where: { userId: order.userId }, isDeleted: false });
+        if (userCart) {
+          await CartItem.destroy({ where: { cartId: userCart.id } });
+        }
+      }
+    }
+
+    await auditService.log({
+      userId: null,
+      action: "PAYMENT_WEBHOOK_PROCESSED",
+      entityType: "Payment",
+      entityId: payment.id,
+      oldValue: { status: 'PENDING' },
+      newValue: { status: payment.status, event, reference }
+    });
+
     return { handled: true };
   }
 
-  // 🔥 SAVE FULL PAYSTACK DATA
-  payment.rawResponse = payload;
-  payment.gatewayResponse = {
-    channel: data.channel,
-    paidAt: data.paid_at,
-    currency: data.currency,
-    fees: data.fees,
-    customerEmail: data.customer?.email,
-  };
-
-  if (event === 'charge.success') {
-    payment.status = 'SUCCESS';
-  } else {
-    payment.status = 'FAILED';
-  }
-
-  await payment.save();
-
-  // 🔥 Update Order
-  await Order.update(
-    {
-      status: payment.status === 'SUCCESS' ? 'PAID' : 'FAILED',
-      paymentStatus: payment.status,
-      paymentReference: reference,
-    },
-    { where: { id: payment.orderId } }
-  );
-   //console.log("✅ Payment updated:", payment.status);
-   //console.log("✅ Order updated to:", payment.status === "SUCCESS" ? "PAID" : "FAILED");
-  return { handled: true };
-}
-
   async handleWebhookFlutterwave(rawBody, signatureHeader) {
-    // Flutterwave sends header 'verif-hash' which you compare against FLW_WEBHOOK_SECRET
     const secret = process.env.FLW_WEBHOOK_SECRET;
     if (!signatureHeader || signatureHeader !== secret) {
+      await auditService.log({
+        userId: null,
+        action: "PAYMENT_WEBHOOK_SIGNATURE_FAILURE",
+        entityType: "Payment",
+        entityId: "flutterwave",
+        newValue: { signatureMismatch: true }
+      });
       throw new Error('Invalid Flutterwave webhook signature');
     }
 
     const payload = JSON.parse(rawBody);
-    // payload.data contains the transaction
     const tx = payload.data;
     const tx_ref = tx.tx_ref || (tx.meta && tx.meta.orderId) || null;
-    // find payment by reference (we stored tx_ref in Payment.reference)
+
     const payment = await Payment.findOne({ where: { reference: tx_ref } });
     if (!payment) {
+      await auditService.log({
+        userId: null,
+        action: "PAYMENT_WEBHOOK_NOT_FOUND",
+        entityType: "Payment",
+        entityId: tx_ref,
+        newValue: { provider: "flutterwave" }
+      });
       return { handled: false, reason: 'payment not found' };
     }
 
-    const status = tx.status; // 'successful' expected
+    const status = tx.status;
     if (status === 'successful') {
       payment.status = 'success';
       payment.rawResponse = payload;
       await payment.save();
       await Order.update({ paymentStatus: 'paid', status: 'completed', paymentReference: tx_ref }, { where: { id: payment.orderId } });
+
+      const order = await Order.findByPk(payment.orderId);
+      if (order) {
+        const user = await User.findByPk(order.userId);
+        if (user) {
+          await notificationService.notifyOrderPaid(user, order);
+        }
+        const userCart = await Cart.findOne({ where: { userId: order.userId }, isDeleted: false });
+        if (userCart) {
+          await CartItem.destroy({ where: { cartId: userCart.id } });
+        }
+      }
+
+      await auditService.log({
+        userId: null,
+        action: "PAYMENT_WEBHOOK_PROCESSED",
+        entityType: "Payment",
+        entityId: payment.id,
+        oldValue: { status: 'PENDING' },
+        newValue: { status: 'SUCCESS', provider: 'flutterwave', reference: tx_ref }
+      });
+
       return { handled: true };
     } else {
       payment.status = 'failed';
       payment.rawResponse = payload;
       await payment.save();
       await Order.update({ paymentStatus: 'failed', status: 'cancelled', paymentReference: tx_ref }, { where: { id: payment.orderId } });
+
+      await auditService.log({
+        userId: null,
+        action: "PAYMENT_WEBHOOK_PROCESSED",
+        entityType: "Payment",
+        entityId: payment.id,
+        oldValue: { status: 'PENDING' },
+        newValue: { status: 'FAILED', provider: 'flutterwave', reference: tx_ref }
+      });
+
       return { handled: true };
     }
   }
 
-  /**
-   * Paystack Transfer API - for payouts to stores
-   */
   async createTransfer({ amount, accountNumber, bankCode, accountName }) {
     const payload = {
       amount: Math.round(amount * 100),
@@ -301,9 +307,6 @@ class PaymentServices {
     };
   }
 
-  /**
-   * Paystack Refund API - for customer returns
-   */
   async createRefund({ orderId, amount }) {
     const payment = await Payment.findOne({ where: { orderId } });
     if (!payment || !payment.reference) throw new Error('Original payment reference not found');

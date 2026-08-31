@@ -2,6 +2,8 @@
 const express = require("express");
 const router = express.Router();
 const adminController = require("../controllers/adminController");
+const adminDriverController = require("../controllers/adminDriverController");
+const adminFinanceController = require("../controllers/adminFinanceController");
 const { authenticate, authorizeRole } = require("../middlewares/auth");
 
 /**
@@ -421,4 +423,133 @@ router.delete(
   authorizeRole("SuperAdmin"),
   adminController.deleteAdmin
 );
+
+/**
+ * Driver Reports
+ */
+router.get(
+  "/drivers/summary",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.getDriversSummary
+);
+
+router.get(
+  "/drivers/active-deliveries",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.getActiveDeliveries
+);
+
+router.get(
+  "/drivers/report/:driverId",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.getDriverReport
+);
+
+/**
+ * Admin Finance Management
+ */
+router.get(
+  "/finance/overview",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getOverview
+);
+
+router.get(
+  "/finance/revenue-chart",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getRevenueChart
+);
+
+router.get(
+  "/finance/wallets",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getWallets
+);
+
+router.get(
+  "/finance/wallet/:walletId",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getWalletDetails
+);
+
+router.get(
+  "/finance/transactions",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getGlobalTransactions
+);
+
+router.get(
+  "/finance/payouts",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getPayouts
+);
+
+router.post(
+  "/finance/payouts/trigger",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.triggerPayout
+);
+
+router.post(
+  "/finance/wallets/adjust",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.adjustBalance
+);
+
+router.post(
+  "/finance/payouts/global",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.triggerGlobalPayout
+);
+
+router.get(
+  "/finance/export-report",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.exportFinancialReport
+);
+
+/**
+ * Finance Reports
+ */
+router.get(
+  "/finance/summary",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getSummary
+);
+
+router.get(
+  "/finance/chart",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getRevenueChart
+);
+
+router.get(
+  "/finance/transactions",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getTransactions
+);
+
+router.get(
+  "/finance/payouts",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminFinanceController.getPayoutRequests
+);
+
 module.exports = router;

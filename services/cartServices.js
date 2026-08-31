@@ -1,7 +1,6 @@
-const Cart = require("../models/cartModel");
-const CartItem = require("../models/cartItemModel");
-const Product =require("../models/productModel");
-const ProductImage = require("../models/imageModel");
+const { Cart, CartItem, Product, ProductImage, ProductDiscount } = require("../models");
+const { calculateCurrentPrice } = require("../utils/priceHelper");
+const auditService = require("./auditService");
 
 exports.createCart = async (userId) => {
   try {
@@ -23,6 +22,13 @@ exports.createCart = async (userId) => {
 
     // Otherwise, create a new cart
     const newCart = await Cart.create({ userId });
+    await auditService.log({
+      userId,
+      action: "CART_CREATED",
+      entityType: "Cart",
+      entityId: newCart.id,
+      newValue: { userId }
+    });
     return newCart;
   } catch (error) {
     console.error("Error creating cart:", error);
@@ -50,8 +56,12 @@ exports.getCartById = async (id) => {
                 {
                   model: ProductImage,
                   as: "images",
-                  attributes: ["url"], // ✅ include only the image URL
+                  attributes: ["url"],
                 },
+                {
+                  model: ProductDiscount,
+                  as: "discounts"
+                }
               ],
             },
           ],
@@ -65,11 +75,12 @@ exports.getCartById = async (id) => {
 
     // Calculate total amount
     let totalAmount = 0;
-    cart.items.forEach((item) => {
+    for (const item of cart.items) {
       if (item.product) {
-        totalAmount += item.quantity * item.product.price;
+        const { finalPrice } = await calculateCurrentPrice(item.product, item.quantity);
+        totalAmount += item.quantity * finalPrice;
       }
-    });
+    }
 
     // Convert to plain object so we can add custom fields
     const cartJson = cart.toJSON();
@@ -91,6 +102,14 @@ exports.deleteCart = async (id) => {
 
   // Soft delete — instead of destroying, mark isDeleted = true
   await cart.update({ isDeleted: true });
+  await auditService.log({
+    userId: cart.userId,
+    action: "CART_DELETED",
+    entityType: "Cart",
+    entityId: cart.id,
+    oldValue: { isDeleted: false },
+    newValue: { isDeleted: true }
+  });
 
   return true;
 };
@@ -99,6 +118,13 @@ exports.deleteCart = async (id) => {
   exports.clearCart = async (cartId) => {
     await CartItem.destroy({
       where: { cartId },
+    });
+    await auditService.log({
+      userId: null,
+      action: "CART_CLEARED",
+      entityType: "Cart",
+      entityId: cartId,
+      newValue: { itemsCount: 0 }
     });
     return { message: "Cart cleared successfully" };
   }

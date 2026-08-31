@@ -47,6 +47,8 @@ class PickupStationServices {
         throw new Error("This address is invalid. Please check the address details.");
       }
       data.shipbubbleAddressCode = result.address_code;
+      data.latitude = result.latitude || null;
+      data.longitude = result.longitude || null;
     } catch (error) {
       throw new Error(error.message || "Unable to validate pickup station address");
     }
@@ -152,6 +154,8 @@ class PickupStationServices {
           address: data.address,
         });
         data.shipbubbleAddressCode = result.address_code;
+        data.latitude = result.latitude || station.latitude;
+        data.longitude = result.longitude || station.longitude;
       } catch (error) {
         throw new Error(error.message || "Unable to validate pickup station address");
       }

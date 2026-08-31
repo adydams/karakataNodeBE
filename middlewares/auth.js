@@ -23,6 +23,25 @@ exports.auth = async (req, res, next) => {
 }
 };
 
+exports.optionalAuth = async (req, res, next) => {
+  try {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) return next();
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = { id: decoded.id, role: decoded.role };
+      next();
+    } catch (err) {
+      next();
+    }
+  } catch (err) {
+    console.error("Optional auth error:", err);
+    next();
+  }
+};
+
 exports.requireRole = (...allowedRoles) => (req, res, next) => {
   const role = req.user && req.user.role;
   if (!role || !allowedRoles.includes(role)) {
@@ -108,7 +127,17 @@ exports.authorizeRole = (...allowedRoles) => {
     }
 console.log("Authorization check:", {user:req.user, userId: req.user.id, userRole: req.user.role, allowedRoles });
     if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Forbidden: insufficient rights' });
+      console.log("Authorization check Forbiden check:", {
+        userId: req.user.id,
+        userRole: req.user.role,
+        allowedRoles: allowedRoles,
+        endpoint: req.originalUrl
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: `Forbidden: insufficient rights. Your role is '${req.user.role}', but one of the following is required: ${allowedRoles.join(", ")}`,
+      });
     }
 
     next();

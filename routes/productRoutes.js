@@ -95,6 +95,18 @@ router.post(
 
 /**
  * @swagger
+ * /api/products/featured-discounts:
+ *   get:
+ *     summary: Get random products with active discounts
+ *     tags: [Products]
+ */
+router.get(
+  "/featured-discounts",
+  ProductController.getFeaturedDiscounts
+);
+
+/**
+ * @swagger
  * /api/products:
  *   get:
  *     summary: Get all products
@@ -163,8 +175,8 @@ router.put(
   "/:id",
   authenticate,
   ensureActive,
-  authorizeRole("Admin","SuperAdmin"),
-  upload.array("images",5),
+  authorizeRole("Admin", "SuperAdmin", "SystemAdmin"),
+  upload.array("images", 5),
   ProductController.update
 );
 
@@ -181,7 +193,7 @@ router.delete(
   "/:id",
   authenticate,
   ensureActive,
-  authorizeRole("Admin","SuperAdmin"),
+  authorizeRole("Admin", "SuperAdmin", "SystemAdmin"),
   ProductController.delete
 );
 
