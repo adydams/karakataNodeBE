@@ -21,11 +21,10 @@ class InventoryServices {
   async getStockAcrossStations(productId) {
     const rows = await Inventory.findAll({
       where: { productId, isDeleted: false },
-      include: [{ model: StorePickupStation, as: "pickupStation" }],
+      attributes: ["id", "productId", "pickupStationId", "quantityOnHand", "quantityReserved", "lowStockThreshold", "isDeleted"],
     });
     return rows.map((r) => ({
       pickupStationId: r.pickupStationId,
-      pickupStation: r.pickupStation,
       quantityOnHand: r.quantityOnHand,
       quantityReserved: r.quantityReserved,
       available: r.quantityOnHand - r.quantityReserved,
@@ -44,7 +43,7 @@ class InventoryServices {
           `\`quantityOnHand\` - \`quantityReserved\` >= ${Number(quantity)}`
         ),
       },
-      include: [{ model: StorePickupStation, as: "pickupStation" }],
+      attributes: ["id", "productId", "pickupStationId", "quantityOnHand", "quantityReserved", "lowStockThreshold", "isDeleted"],
       order: [
         [sequelize.literal("(`quantityOnHand` - `quantityReserved`)"), "DESC"],
       ],

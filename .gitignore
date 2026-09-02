@@ -1,8 +1,6 @@
 node_modules/
 config.env
 config/config.json
-migration/
-migrations/
 *.log
 .DS_Store
 dist/
@@ -12,3 +10,5 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+migration/
+migrations/

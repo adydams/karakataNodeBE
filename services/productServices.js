@@ -159,7 +159,7 @@ class ProductService {
           {
             model: Inventory,
             as: "inventories",
-            include: [{ model: StorePickupStation, as: "pickupStation" }]
+            attributes: ["id", "productId", "pickupStationId", "quantityOnHand", "quantityReserved", "lowStockThreshold", "isDeleted"]
           }
         ]
       });
@@ -296,7 +296,7 @@ class ProductService {
           {
             model: Inventory,
             as: "inventories",
-            include: [{ model: StorePickupStation, as: "pickupStation" }]
+            attributes: ["id", "productId", "pickupStationId", "quantityOnHand", "quantityReserved", "lowStockThreshold", "isDeleted"]
           }
         ]
       });
@@ -352,7 +352,7 @@ class ProductService {
         {
           model: Inventory,
           as: "inventories",
-          include: [{ model: StorePickupStation, as: "pickupStation" }]
+          attributes: ["id", "productId", "pickupStationId", "quantityOnHand", "quantityReserved", "lowStockThreshold", "isDeleted"]
         },
         { model: ProductDiscount, as: "discounts" },
         { model: Product.sequelize.models.Category, as: "category", attributes: ["id", "name"] },
@@ -398,7 +398,7 @@ class ProductService {
         {
           model: Inventory,
           as: "inventories",
-          include: [{ model: StorePickupStation, as: "pickupStation" }]
+          attributes: ["id", "productId", "pickupStationId", "quantityOnHand", "quantityReserved", "lowStockThreshold", "isDeleted"]
         },
         { model: ProductDiscount, as: "discounts" }
       ]
