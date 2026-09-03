@@ -19,7 +19,7 @@ class WalletService {
         const store = await Store.findByPk(product.storeId);
         if (!store) throw new Error(`Store for product ${item.productId} not found`);
 
-        const rate = store.commissionRate ?? setting.defaultCommissionRate;
+        const rate = setting.defaultCommissionRate;
 
         // Create wallet if it doesn't exist
         const [wallet] = await Wallet.findOrCreate({
@@ -28,9 +28,13 @@ class WalletService {
           transaction: t,
         });
 
-        const subtotal = item.subtotal;
+        const subtotal = item.subtotal || (item.quantity * item.price);
         const commissionAmount = parseFloat((subtotal * (rate / 100)).toFixed(2));
         const netAmount = parseFloat((subtotal - commissionAmount).toFixed(2));
+
+        const returnDays = parseInt(store.returnWindowDays ?? setting.returnWindowDays) || 5;
+        const settlesAt = new Date();
+        settlesAt.setDate(settlesAt.getDate() + returnDays);
 
         // 1. Create WalletTransaction (SALE_CREDIT)
         await WalletTransaction.create({
@@ -44,7 +48,7 @@ class WalletService {
           commissionRate: rate,
           commissionAmount: commissionAmount,
           netAmount: netAmount,
-          settlesAt: sequelize.literal(`DATE_ADD(NOW(), INTERVAL ${store.returnWindowDays ?? setting.returnWindowDays} DAY)`),
+          settlesAt: settlesAt,
           description: `Sale credit for order ${order.id} - item ${item.id}`,
         }, { transaction: t });
 
@@ -73,14 +77,20 @@ class WalletService {
   /**
    * Daily Cron: PENDING -> SETTLED
    */
-  async settleMaturedTransactions() {
+  async settleMaturedTransactions(walletIds = null) {
     const t = await sequelize.transaction();
     try {
+      const where = {
+        status: "PENDING",
+        settlesAt: { [Op.lte]: new Date() },
+      };
+
+      if (walletIds && Array.isArray(walletIds)) {
+        where.walletId = { [Op.in]: walletIds };
+      }
+
       const matured = await WalletTransaction.findAll({
-        where: {
-          status: "PENDING",
-          settlesAt: { [Op.lte]: new Date() },
-        },
+        where,
         transaction: t,
       });
 

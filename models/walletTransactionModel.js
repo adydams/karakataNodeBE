@@ -80,6 +80,11 @@ const WalletTransaction = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    isDeleted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
   },
   {
     tableName: "wallet_transactions",

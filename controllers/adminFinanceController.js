@@ -15,33 +15,31 @@ class AdminFinanceController {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      // 1. Total Gross Revenue (all settled SALE_CREDITS)
-      const totalGross = await WalletTransaction.sum("grossAmount", {
-        where: { type: "SALE_CREDIT", status: "SETTLED" }
+      // 1. Platform Revenue (All commissions earned)
+      const totalPlatformRevenue = await WalletTransaction.sum("commissionAmount", {
+        where: { type: "SALE_CREDIT" }
       }) || 0;
 
-      // 2. Total Commission earned by platform
-      const totalCommission = await WalletTransaction.sum("commissionAmount", {
-        where: { type: "SALE_CREDIT", status: "SETTLED" }
+      // 2. Total Store Earnings (All net amounts earned)
+      const totalStoreEarnings = await WalletTransaction.sum("netAmount", {
+        where: { type: "SALE_CREDIT" }
       }) || 0;
 
-      // 3. Total Payouts processed
-      const totalPayouts = await WalletTransaction.sum("netAmount", {
-        where: { type: "PAYOUT_DEBIT", status: "COMPLETED" }
-      }) || 0;
-
-      // 4. Total Pending Settlements
-      const pendingSettlements = await WalletTransaction.sum("netAmount", {
+      // 3. Total Pending Balance (All pending net amounts)
+      const totalPendingBalance = await WalletTransaction.sum("netAmount", {
         where: { status: "PENDING" }
       }) || 0;
+
+      // 4. Total Available Balance (Actual liquidity in all wallets)
+      const totalAvailableBalance = await Wallet.sum("availableBalance") || 0;
 
       return res.status(200).json({
         success: true,
         data: {
-          totalGross,
-          totalCommission,
-          totalPayouts,
-          pendingSettlements
+          totalPlatformRevenue,
+          totalStoreEarnings,
+          totalPendingBalance,
+          totalAvailableBalance
         }
       });
     } catch (error) {
@@ -58,10 +56,10 @@ class AdminFinanceController {
       const results = await WalletTransaction.findAll({
         attributes: [
           [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
-          [sequelize.fn('SUM', sequelize.col('grossAmount')), 'revenue'],
-          [sequelize.fn('SUM', sequelize.col('commissionAmount')), 'commission']
+          [sequelize.fn('SUM', sequelize.col('grossAmount')), 'totalRevenue'],
+          [sequelize.fn('SUM', sequelize.col('commissionAmount')), 'platformRevenue']
         ],
-        where: { type: "SALE_CREDIT", status: "SETTLED" },
+        where: { type: "SALE_CREDIT" },
         group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
         order: [[sequelize.fn('DATE', sequelize.col('createdAt')), 'ASC']],
         raw: true
@@ -82,7 +80,7 @@ class AdminFinanceController {
       const { page = 1, limit = 10, status, type } = req.query;
       const offset = (page - 1) * limit;
 
-      const where = { isDeleted: false }; // Assuming WalletTransaction has isDeleted or we just filter by status
+      const where = {};
       if (status) where.status = status;
       if (type) where.type = type;
 
@@ -125,6 +123,67 @@ class AdminFinanceController {
       return res.status(200).json({
         success: true,
         data: wallets
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async getSettlementEligible(req, res) {
+    try {
+      const wallets = await Wallet.findAll({
+        include: [{ model: Store, as: "store" }],
+        where: {
+          // Wallet has some pending balance
+          pendingBalance: { [Op.gt]: 0 }
+        }
+      });
+
+      const eligible = [];
+      for (const wallet of wallets) {
+        const maturedTxs = await WalletTransaction.findAll({
+          where: {
+            walletId: wallet.id,
+            status: "PENDING",
+            settlesAt: { [Op.lte]: new Date() }
+          }
+        });
+
+        if (maturedTxs.length > 0) {
+          const amount = maturedTxs.reduce((sum, tx) => sum + (tx.netAmount || 0), 0);
+          eligible.push({
+            walletId: wallet.id,
+            storeName: wallet.store?.name,
+            storeEmail: wallet.store?.email,
+            settleableAmount: amount,
+            transactionCount: maturedTxs.length
+          });
+        }
+      }
+
+      return res.status(200).json({ success: true, data: eligible });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async confirmSettlement(req, res) {
+    try {
+      const { walletIds } = req.body; // Array of wallet IDs or null for all
+
+      const WalletService = require("../services/walletServices");
+
+      // If walletIds is provided, we only settle those.
+      // Since settleMaturedTransactions currently settles ALL,
+      // I should probably update WalletService to accept a filter.
+
+      const settledCount = await WalletService.settleMaturedTransactions(walletIds);
+
+      return res.status(200).json({
+        success: true,
+        message: `Successfully settled ${settledCount} matured transactions.`,
       });
     } catch (error) {
       console.error(error);

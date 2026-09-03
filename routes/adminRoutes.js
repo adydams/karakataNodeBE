@@ -4,6 +4,7 @@ const router = express.Router();
 const adminController = require("../controllers/adminController");
 const adminDriverController = require("../controllers/adminDriverController");
 const adminFinanceController = require("../controllers/adminFinanceController");
+const adminOverviewController = require("../controllers/adminOverviewController");
 const { authenticate, authorizeRole } = require("../middlewares/auth");
 
 /**
@@ -428,6 +429,20 @@ router.delete(
  * Driver Reports
  */
 router.get(
+  "/finance/settlement-eligible",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminFinanceController.getSettlementEligible
+);
+
+router.post(
+  "/finance/confirm-settlement",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminFinanceController.confirmSettlement
+);
+
+router.get(
   "/drivers/summary",
   authenticate,
   authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
@@ -529,6 +544,20 @@ router.get(
   authenticate,
   authorizeRole("SuperAdmin", "SystemAdmin"),
   adminFinanceController.getSummary
+);
+
+router.get(
+  "/overview/top-products",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminOverviewController.getTopProducts
+);
+
+router.get(
+  "/overview/customer-stats",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminOverviewController.getCustomerStats
 );
 
 router.get(
