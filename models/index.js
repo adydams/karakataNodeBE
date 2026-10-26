@@ -37,6 +37,9 @@ const Wallet = require("./walletModel");
 const WalletTransaction = require("./walletTransactionModel");
 const Payout = require("./payoutModel");
 const ReturnRequest = require("./returnRequestModel");
+const RefundLog = require("./refundLogModel");
+const MissedApprovalLog = require("./missedApprovalLogModel");
+const Hub = require("./hubModel");
 
 // Validate that all imports are proper Sequelize models
 const models = {
@@ -72,6 +75,9 @@ const models = {
   WalletTransaction,
   Payout,
   ReturnRequest,
+  RefundLog,
+  MissedApprovalLog,
+  Hub,
 };
 
 // Check each model
@@ -260,8 +266,10 @@ try {
 
   // ================= MARKETPLACE & WALLET =================
 
-  // Shipment Associations
+  // Order ↔ Shipment
+  Order.hasMany(Shipment, { foreignKey: 'orderId', as: 'shipments' });
   Shipment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
+
   Shipment.belongsTo(ShippingProvider, { foreignKey: 'providerId', as: 'shippingProvider' });
   Shipment.belongsTo(User, { foreignKey: 'driverId', as: 'driver' });
   User.hasMany(Shipment, { foreignKey: 'driverId', as: 'shipments' });
@@ -309,6 +317,10 @@ try {
   // ReturnRequest ↔ OrderItem
   ReturnRequest.belongsTo(OrderItem, { foreignKey: "orderItemId", as: "orderItem" });
   OrderItem.hasMany(ReturnRequest, { foreignKey: "orderItemId", as: "returnRequests" });
+  RefundLog.belongsTo(OrderItem, { foreignKey: "orderItemId", as: "orderItem" });
+  OrderItem.hasMany(RefundLog, { foreignKey: "orderItemId", as: "refundLogs" });
+  MissedApprovalLog.belongsTo(OrderItem, { foreignKey: "orderItemId", as: "orderItem" });
+  OrderItem.hasMany(MissedApprovalLog, { foreignKey: "orderItemId", as: "missedApprovalLogs" });
 
   // ReturnRequest ↔ User (Customer)
   ReturnRequest.belongsTo(User, { foreignKey: "customerId", as: "customer" });
@@ -369,4 +381,7 @@ module.exports = {
   WalletTransaction,
   Payout,
   ReturnRequest,
+  RefundLog,
+  MissedApprovalLog,
+  Hub,
 };

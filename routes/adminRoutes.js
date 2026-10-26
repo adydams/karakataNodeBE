@@ -5,11 +5,51 @@ const adminController = require("../controllers/adminController");
 const adminDriverController = require("../controllers/adminDriverController");
 const adminFinanceController = require("../controllers/adminFinanceController");
 const adminOverviewController = require("../controllers/adminOverviewController");
+const adminDiscountController = require("../controllers/adminDiscountController");
 const { authenticate, authorizeRole } = require("../middlewares/auth");
+
+/**
+ * Discount Management
+ */
+router.get(
+  "/discounts",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminDiscountController.getAllDiscounts
+);
+
+router.post(
+  "/discounts",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminDiscountController.createDiscount
+);
+
+router.put(
+  "/discounts/:id",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminDiscountController.updateDiscount
+);
+
+router.patch(
+  "/discounts/:id/status",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminDiscountController.toggleStatus
+);
+
+router.delete(
+  "/discounts/:id",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminDiscountController.deleteDiscount
+);
 
 /**
  * @swagger
  * tags:
+
  *   name: Admin Management
  *   description: Endpoints for managing Admin users
  */
@@ -92,14 +132,19 @@ router.post("/login", adminController.Adminlogin);
  *                 type: string
  *                 format: password
  *                 example: "@mysecurepassword"
+ *     responses:
+ *       200:
+ *         description: Admin onboarded successfully
+ *       400:
+ *         description: Bad request
  */
 router.post("/onboard-admin",
              authenticate,
              //authorizeRole("SuperAdmin", "SystemAdmin"), // Multi-role access
             // authorizeRole("SuperAdmin"),
-             //checkPermissions("admin:create"),  
+             //checkPermissions("admin:create"),
              adminController.onboardAdmin);
-             
+
 /**
  * @swagger
  * /api/admin/filter/users:
@@ -129,7 +174,7 @@ router.post("/onboard-admin",
  *         name: email
  *         schema:
  *           type: string
- *         description: Filter by email
+ *         description: Filter by email address
  *       - in: query
  *         name: page
  *         schema:
@@ -170,7 +215,7 @@ router.get( "/filter/users",
   authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
   adminController.filterAdmins
 );
-        
+
 
 /**
  * @swagger
@@ -254,6 +299,20 @@ router.get(
   adminController.getAllAdmins
 );
 
+// --- Static routes must come before parameterized routes ---
+router.get(
+  "/settings",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminController.getShippingSettings
+);
+
+router.patch(
+  "/settings",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  adminController.updateShippingSettings
+);
 
 /**
  * @swagger
@@ -315,6 +374,8 @@ router.get(
  *     responses:
  *       200:
  *         description: Admin updated successfully
+ *       400:
+ *         description: Bad request
  */
 router.put(
   "/:id",
@@ -353,6 +414,8 @@ router.put(
  *     responses:
  *       200:
  *         description: Role updated successfully
+ *       400:
+ *         description: Bad request
  */
 router.patch(
   "/:id/role",
@@ -391,6 +454,8 @@ router.patch(
  *     responses:
  *       200:
  *         description: Admin account status updated successfully
+ *       400:
+ *         description: Bad request
  */
 router.patch(
   "/:id/status",
@@ -417,6 +482,8 @@ router.patch(
  *     responses:
  *       200:
  *         description: Admin deleted successfully
+ *       400:
+ *         description: Bad request
  */
 router.delete(
   "/:id",
@@ -449,11 +516,80 @@ router.get(
   adminDriverController.getDriversSummary
 );
 
+router.post(
+  "/shipments/recover",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin"),
+  async (req, res) => {
+    try {
+      const result = await require("../services/orderServices").recoverPaidOrders();
+      res.json({
+        success: true,
+        message: result.failedCount
+          ? `Recovered ${result.repairedCount}; ${result.failedCount} require manual logistics attention.`
+          : `Recovered ${result.repairedCount} missing shipments and wallet credits.`,
+        data: result,
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
+
 router.get(
-  "/drivers/active-deliveries",
+  "/drivers/captains",
   authenticate,
   authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
-  adminDriverController.getActiveDeliveries
+  adminDriverController.getCaptains
+);
+
+router.get(
+  "/drivers/shipments",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.getShipments
+);
+
+router.patch(
+  "/shipment/:id/status",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.updateShipmentStatus
+);
+
+router.patch(
+  "/shipment/:id/cancel",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.cancelShipment
+);
+
+router.post(
+  "/shipments/:shipmentId/track",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.trackShipment
+);
+
+router.post(
+  "/shipments/:shipmentId/mark-delivered",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.markDelivered
+);
+
+router.patch(
+  "/fulfillment/:fulfillmentId/status",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.updateFulfillmentStatus
+);
+
+router.patch(
+  "/shipment/:id/provider",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.reassignProvider
 );
 
 router.get(
@@ -478,6 +614,13 @@ router.get(
   authenticate,
   authorizeRole("SuperAdmin", "SystemAdmin"),
   adminFinanceController.getRevenueChart
+);
+
+router.post(
+  "/finance/wallets/settle/:walletId",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminFinanceController.settleWallet
 );
 
 router.get(
@@ -527,6 +670,20 @@ router.post(
   authenticate,
   authorizeRole("SuperAdmin", "SystemAdmin"),
   adminFinanceController.triggerGlobalPayout
+);
+
+router.post(
+  "/finance/verify-payment/:paymentId",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminFinanceController.verifyPayment
+);
+
+router.post(
+  "/drivers/assign",
+  authenticate,
+  authorizeRole("SuperAdmin", "SystemAdmin", "Admin"),
+  adminDriverController.assignDriver
 );
 
 router.get(

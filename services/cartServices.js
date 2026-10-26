@@ -74,17 +74,21 @@ exports.getCartById = async (id) => {
     }
 
     // Calculate total amount
+    const cartJson = cart.toJSON();
     let totalAmount = 0;
-    for (const item of cart.items) {
+    for (const [index, item] of cart.items.entries()) {
       if (item.product) {
-        const { finalPrice } = await calculateCurrentPrice(item.product, item.quantity);
-        totalAmount += item.quantity * finalPrice;
+        const pricing = await calculateCurrentPrice(item.product, item.quantity);
+        Object.assign(cartJson.items[index].product, {
+          currentPrice: pricing.finalPrice,
+          originalPrice: pricing.originalPrice,
+          isDiscounted: pricing.isDiscounted,
+        });
+        totalAmount += item.quantity * pricing.finalPrice;
       }
     }
 
-    // Convert to plain object so we can add custom fields
-    const cartJson = cart.toJSON();
-    cartJson.totalAmount = totalAmount;
+    cartJson.totalAmount = Number(totalAmount.toFixed(2));
 
     return cartJson;
   } catch (error) {

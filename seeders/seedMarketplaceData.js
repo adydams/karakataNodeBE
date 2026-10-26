@@ -26,6 +26,11 @@ async function seedMarketplace() {
       returnWindowDays: 5,
       payoutDelayDays: 7,
       minimumPayoutAmount: 1000.00,
+      vatPercentage: 4.56,
+      internalBaseFee: 1000.00,
+      internalPricePerKm: 100.00,
+      internalPricePerKg: 50.00,
+      pickupFeePercent: 60.00,
     });
 
     // 2. Users

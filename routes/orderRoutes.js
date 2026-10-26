@@ -138,7 +138,8 @@
 const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
-const { auth, optionalAuth } = require("../middlewares/auth");
+const discountPreviewController = require("../controllers/discountPreviewController");
+const { auth, authenticate, optionalAuth } = require("../middlewares/auth");
 
 /**
  * @swagger
@@ -238,10 +239,34 @@ router.get(
   (req, res) => orderController.getOrders(req, res)
 );
 
+router.post(
+  "/preview",
+  optionalAuth,
+  (req, res) => discountPreviewController.preview(req, res)
+);
+
+router.get(
+  "/my-orders",
+  auth,
+  (req, res) => orderController.getMyOrders(req, res)
+);
+
+router.post(
+  "/retry-payment/:orderId",
+  auth,
+  (req, res) => orderController.retryPayment(req, res)
+);
+
 router.get(
   "/summary",
   auth,
   (req, res) => orderController.getSummary(req, res)
+);
+
+router.post(
+  "/checkout-quote",
+  auth,
+  (req, res) => orderController.getCheckoutQuote(req, res)
 );
 
 router.post(
@@ -353,6 +378,12 @@ router.get(
   "/invoice/:orderId",
   optionalAuth,
   (req, res) => orderController.getInvoice(req, res)
+);
+
+router.get(
+  "/invoices/bundle/pdf",
+  authenticate,
+  (req, res) => orderController.getInvoiceBundlePdf(req, res)
 );
 
 router.get(

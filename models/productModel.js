@@ -81,10 +81,34 @@ const Product = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    status: {
+      type: DataTypes.ENUM("pending_review", "approved", "rejected"),
+      allowNull: false,
+      defaultValue: "approved",
+    },
+    rejectionReason: { type: DataTypes.STRING(500), allowNull: true },
+    approvalDeadline: { type: DataTypes.DATE, allowNull: true },
+    approvalReviewedBy: { type: DataTypes.UUID, allowNull: true },
+    approvalReviewedAt: { type: DataTypes.DATE, allowNull: true },
+    // How goods reach the logistics network:
+    // RIDER_PICKUP — a rider collects from the store's pickup station;
+    // HUB_DROPOFF — the store owner drops the item at a hub themselves.
+    fulfillmentMethod: {
+      type: DataTypes.ENUM("RIDER_PICKUP", "HUB_DROPOFF"),
+      allowNull: false,
+      defaultValue: "RIDER_PICKUP",
+    },
+    fulfillmentHubId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
   },
   {
     tableName: "products",
     timestamps: true, // ✅ Sequelize will auto-manage createdAt & updatedAt
+    defaultScope: {
+      where: { isDeleted: false, status: "approved" },
+    },
   }
 );
 

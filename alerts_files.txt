@@ -1,0 +1,17 @@
+karakatacommerce/src/components/adminDashboard/CategoryDetailsModal.tsx
+karakatacommerce/src/pages/adminDashboard/AdminUsers.tsx
+karakatacommerce/src/pages/adminDashboard/Categories.tsx
+karakatacommerce/src/pages/adminDashboard/Categories.tsx`
+karakatacommerce/src/pages/adminDashboard/Customer.tsx
+karakatacommerce/src/pages/adminDashboard/Permissions.tsx
+karakatacommerce/src/pages/adminDashboard/Products.tsx
+karakatacommerce/src/pages/adminDashboard/RestockApprovals.tsx
+karakatacommerce/src/pages/adminDashboard/Returns.tsx
+karakatacommerce/src/pages/adminDashboard/Shipment.tsx
+karakatacommerce/src/pages/adminDashboard/Shipment.tsx`
+karakatacommerce/src/pages/adminDashboard/StoreHome.tsx
+karakatacommerce/src/pages/AdminManagement.tsx
+karakatacommerce/src/pages/CartPage.tsx
+karakatacommerce/src/pages/CheckoutAddress.tsx
+karakatacommerce/src/pages/customer/MyOrders.tsx
+karakatacommerce/src/pages/InvoiceTracking.tsx

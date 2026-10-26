@@ -1,4 +1,4 @@
-const Store = require("../models/storeModel");
+const { Store, Product } = require("../models");
 
 class StoreServices {
  async createStore(data, currentUser) {
@@ -36,24 +36,45 @@ class StoreServices {
 }
 
   async getAllStores() {
-    return await Store.findAll();
+    return await Store.findAll({ where: { isDeleted: false } });
   }
 
   async getStoreById(id) {
-    return await Store.findByPk(id);
+    return await Store.findOne({ where: { id, isDeleted: false } });
   }
 
   async updateStore(id, data) {
-    const store = await Store.findByPk(id);
+    const store = await Store.findOne({ where: { id, isDeleted: false } });
     if (!store) return null;
     return await store.update(data);
   }
 
   async deleteStore(id) {
-    const store = await Store.findByPk(id);
-    if (!store) return null;
-    await store.destroy();
-    return store;
+    const t = await require("../db/database").sequelize.transaction();
+    try {
+      const store = await Store.findByPk(id, { transaction: t });
+      if (!store) {
+        await t.rollback();
+        return null;
+      }
+
+      // Soft-delete all products belonging to this store
+      await Product.update({ isDeleted: true }, { where: { storeId: id }, transaction: t });
+
+      // Soft-delete all inventory records for those products
+      const products = await Product.findAll({ where: { storeId: id }, attributes: ['id'], transaction: t });
+      const productIds = products.map(p => p.id);
+      if (productIds.length > 0) {
+        await require("../models").Inventory.update({ isDeleted: true }, { where: { productId: { [require("sequelize").Op.in]: productIds } }, transaction: t });
+      }
+
+      await store.update({ isDeleted: true }, { transaction: t });
+      await t.commit();
+      return store;
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
   }
 }
 

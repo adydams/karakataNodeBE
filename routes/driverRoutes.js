@@ -7,6 +7,8 @@ const authMiddleware = require("../middlewares/auth");
 router.use(authMiddleware.authenticate);
 
 router.get("/tasks", driverController.getTasks);
+router.patch("/shipment/:id/accept", driverController.acceptTask);
 router.patch("/shipment/:id/status", driverController.updateStatus);
+router.patch("/fulfillment/:fulfillmentId/status", driverController.updateFulfillmentStatus);
 
 module.exports = router;

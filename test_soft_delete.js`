@@ -1,0 +1,67 @@
+const { sequelize, Store, Product, Inventory } = require("./models");
+const storeService = require("./services/storeServices");
+
+async function testSoftDelete() {
+  console.log("🧪 Testing Soft-Delete Logic...");
+
+  try {
+    // 1. Setup: Create a dummy user and store
+    const dummyUser = { id: "user-123", name: "Test User" }; // This is simplified, normally we'd create one in DB
+    // Note: We need a real user in DB if there are FK constraints.
+    // For this test, I'll try to bypass or create a minimal user if possible.
+    // Actually, let's just use a known ID or create one.
+
+    console.log("\n--- Step 1: Creating Store ---");
+    const store = await Store.create({
+      name: "Test SoftDelete Store",
+      ownerUserId: "00000000-0000-0000-0000-000000000000", // Use a UUID if needed
+      address: "Test Address",
+      isDeleted: false
+    });
+    console.log(`Store created: ${store.id}`);
+
+    console.log("\n--- Step 2: Creating Product ---");
+    const product = await Product.create({
+      name: "Test Product",
+      price: 100,
+      storeId: store.id,
+      categoryId: "00000000-0000-0000-0000-000000000000", // Dummy category
+      isDeleted: false,
+      status: "approved"
+    });
+    console.log(`Product created: ${product.id}`);
+
+    console.log("\n--- Step 3: Deleting Store ---");
+    await storeService.deleteStore(store.id);
+    console.log("Store deletion triggered.");
+
+    console.log("\n--- Step 4: Verifying Soft-Delete ---");
+    const deletedStore = await Store.findByPk(store.id);
+    console.log(`Store isDeleted: ${deletedStore.isDeleted}`);
+
+    const deletedProduct = await Product.findByPk(product.id);
+    console.log(`Product isDeleted: ${deletedProduct.isDeleted}`);
+
+    console.log("\n--- Step 5: Verifying API Filtering ---");
+    const allStores = await storeService.getAllStores();
+    const foundStore = allStores.find(s => s.id === store.id);
+    console.log(`Store found in getAllStores: ${!!foundStore}`);
+
+    const storeById = await storeService.getStoreById(store.id);
+    console.log(`Store found in getStoreById: ${!!storeById}`);
+
+    if (deletedStore.isDeleted && deletedProduct.isDeleted && !foundStore && !storeById) {
+      console.log("\n✅ SUCCESS: Soft-delete logic works as expected!");
+    } else {
+      console.log("\n❌ FAILURE: Soft-delete logic failed one or more checks.");
+    }
+
+  } catch (error) {
+    console.error("\n❌ TEST ERROR:", error);
+  } finally {
+    await sequelize.close();
+    process.exit();
+  }
+}
+
+testSoftDelete();

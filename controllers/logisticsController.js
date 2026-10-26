@@ -79,13 +79,19 @@ class LogisticsController {
       const markupRate = (setting?.shippingMarkupPercent || 0) / 100;
 
       if (ratesData && Array.isArray(ratesData.couriers)) {
-        ratesData.couriers = ratesData.couriers.map(c => ({
-          ...c,
-          rawFee: c.fee,
-          markupAmount: parseFloat((c.fee * markupRate).toFixed(2)),
-          displayFee: parseFloat((c.fee * (1 + markupRate)).toFixed(2)),
-          fee: parseFloat((c.fee * (1 + markupRate)).toFixed(2)),
-        }));
+        ratesData.couriers = ratesData.couriers.map(c => {
+          const isInternal = c.id === 'karakata-internal' || c.raw?.provider === 'internal';
+          // Internal fleet is priced by ShippingPriceCalculator and charged
+          // as-is at checkout; only external couriers get the platform markup.
+          const markupAmount = isInternal ? 0 : parseFloat((c.fee * markupRate).toFixed(2));
+          return {
+            ...c,
+            rawFee: c.fee,
+            markupAmount,
+            displayFee: parseFloat((c.fee + markupAmount).toFixed(2)),
+            fee: parseFloat((c.fee + markupAmount).toFixed(2)),
+          };
+        });
       }
     } catch (err) {
       console.error('Failed to apply shipping markup:', err.message || err);
@@ -94,6 +100,9 @@ class LogisticsController {
     return res.status(200).json({
       success: true,
       data: ratesData,
+      ...(ratesData.internalFleetUnavailable
+        ? { internalFleetUnavailable: ratesData.internalFleetUnavailable }
+        : {}),
     });
 
   } catch (err) {
@@ -181,10 +190,21 @@ class LogisticsController {
    * ShipBubble webhook — update shipment status automatically.
    * Register this URL in your ShipBubble dashboard.
    *
-   * ShipBubble sends: { order_id: "SB-XXX", status: "shipped" | "in_transit" | "delivered" | "failed" }
+   * ShipBubble sends a status payload and signs the raw body with x-ship-signature.
    */
   async webhook(req, res) {
     try {
+      const secret = process.env.SHIPBUBBLE_SECRET_KEY;
+      const signature = req.headers["x-ship-signature"];
+      if (secret) {
+        const crypto = require("crypto");
+        const expected = crypto.createHmac("sha512", secret).update(req.rawBody || "").digest("hex");
+        if (!signature || signature.length !== expected.length ||
+            !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+          return res.status(401).json({ message: "Invalid ShipBubble webhook signature" });
+        }
+      }
+
       const { order_id, status } = req.body;
 
       if (!order_id || !status) {
@@ -198,8 +218,7 @@ class LogisticsController {
       return res.status(200).json({ received: true });
     } catch (err) {
       console.error("Webhook error:", err.message);
-      // Always return 200 to ShipBubble so it doesn't keep retrying
-      return res.status(200).json({ received: true, error: err.message });
+      return res.status(500).json({ received: false, message: err.message });
     }
   }
 

@@ -28,7 +28,43 @@ class discountServices {
     return discount;
   }
 
+  /**
+   * Finds the best active automatic discount based on the order total.
+   */
+  async findActiveAutomaticDiscount(orderTotal) {
+    const discounts = await Discount.findAll({
+      where: {
+        isAutomatic: true,
+        isActive: true,
+        isDeleted: false,
+        minOrderAmount: { [Op.lte]: orderTotal },
+        [Op.or]: [
+          { expiresAt: null },
+          { expiresAt: { [Op.gt]: new Date() } },
+        ],
+      },
+      order: [["value", "DESC"]], // Simplified: assume higher value is better
+    });
+
+    if (discounts.length === 0) return null;
+
+    // Find the one that actually gives the most discount
+    let bestDiscount = null;
+    let maxSavings = -1;
+
+    for (const disc of discounts) {
+      const { discountAmount } = this.apply(disc, orderTotal);
+      if (discountAmount > maxSavings) {
+        maxSavings = discountAmount;
+        bestDiscount = disc;
+      }
+    }
+
+    return bestDiscount;
+  }
+
   apply(discount, orderTotal) {
+
     let discountAmount = 0;
 
     if (discount.type === "PERCENTAGE") {

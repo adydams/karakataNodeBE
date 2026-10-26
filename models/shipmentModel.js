@@ -61,9 +61,16 @@ const Shipment = sequelize.define(
     status: {
       type: DataTypes.ENUM(
         "pending",
+        "accepted",
+        "assigned",
+        "processing",
+        "order_received",
+        "picked_up",
         "shipped",
         "in_transit",
+        "out_for_delivery",
         "delivered",
+        "returned",
         "failed",
         "cancelled"
       ),

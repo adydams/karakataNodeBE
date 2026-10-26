@@ -66,23 +66,50 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.googleAuth = passport.authenticate("google", { scope: ["profile", "email"] });
+exports.googleAuth = (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(503).json({ success: false, message: "Google authentication is currently disabled." });
+  }
+  passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+};
 
-exports.googleCallback = (req, res, next) => {
-  passport.authenticate("google", { session: false }, async (err, profile) => {
-   
+exports.facebookAuth = (req, res, next) => {
+  if (!process.env.FACEBOOK_CLIENT_ID) {
+    return res.status(503).json({ success: false, message: "Facebook authentication is currently disabled." });
+  }
+  passport.authenticate("facebook", { scope: ["email", "public_profile"] })(req, res, next);
+};
+
+exports.twitterAuth = (req, res, next) => {
+  if (!process.env.TWITTER_CONSUMER_KEY) {
+    return res.status(503).json({ success: false, message: "X (Twitter) authentication is currently disabled." });
+  }
+  passport.authenticate("twitter", { scope: ["read"] })(req, res, next);
+};
+
+exports.instagramAuth = (req, res, next) => {
+  if (!process.env.INSTAGRAM_CLIENT_ID) {
+    return res.status(503).json({ success: false, message: "Instagram authentication is currently disabled." });
+  }
+  passport.authenticate("instagram")(req, res, next);
+};
+
+exports.socialCallback = (provider) => (req, res, next) => {
+  passport.authenticate(provider, { session: false }, async (err, profile) => {
     if (err || !profile) {
       return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
     }
     try {
-      const { user, token } = await authService.findOrCreateFromOAuth("google", profile);
-      // redirect to frontend with token
+      const { user, token } = await authService.findOrCreateFromOAuth(provider, profile);
       res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
     } catch (e) {
       res.redirect(`${process.env.FRONTEND_URL}/login?error=server_error`);
     }
   })(req, res, next);
 };
+
+exports.googleCallback = exports.socialCallback("google");
+
 
 exports.resetPassword = async (req, res) => {
   try {

@@ -103,6 +103,11 @@ class PaymentServices {
     return { success: false };
   }
 
+  async verifyPayment({ gateway, reference }) {
+    const result = await this.verify({ gateway: gateway?.toLowerCase(), reference });
+    return result.success;
+  }
+
   async handleWebhookPaystack(rawBody, signatureHeader) {
     const crypto = require('crypto');
     const secret = process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY;
@@ -151,6 +156,18 @@ class PaymentServices {
       customerEmail: data.customer?.email,
     };
 
+    if (event === 'refund.processed' || event === 'refund.failed') {
+      const { RefundLog } = require("../models");
+      const refundLog = await RefundLog.findOne({ where: { paystackRefundId: data.id || data.reference || data.refund_reference } });
+      if (refundLog) {
+        await refundLog.update({
+          status: event === "refund.processed" ? "completed" : "failed",
+          failureReason: event === "refund.failed" ? (data.failure_reason || "Paystack refund failed") : null,
+        });
+      }
+      return { handled: Boolean(refundLog) };
+    }
+
     if (event === 'charge.success') {
       payment.status = 'SUCCESS';
     } else {
@@ -158,6 +175,9 @@ class PaymentServices {
     }
 
     await payment.save();
+
+    const OrderServices = require('./orderServices');
+    await OrderServices.verify(payment.orderId);
 
     await Order.update(
       {
@@ -237,6 +257,10 @@ class PaymentServices {
       payment.status = 'success';
       payment.rawResponse = payload;
       await payment.save();
+
+      const OrderServices = require('./orderServices');
+      await OrderServices.verify(payment.orderId);
+
       await Order.update({ paymentStatus: 'paid', status: 'completed', paymentReference: tx_ref }, { where: { id: payment.orderId } });
 
       const order = await Order.findByPk(payment.orderId);

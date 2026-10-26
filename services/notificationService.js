@@ -51,6 +51,26 @@ class NotificationService {
     }, transaction);
   }
 
+  async notifyOrderPaid(user, order) {
+    return this.notify(user.id, {
+      type: "ORDER_PAID",
+      title: "Payment received",
+      message: `Payment for order #${order.id.slice(0, 8)} was received successfully.`,
+      metadata: { orderId: order.id },
+      sendEmail: true,
+    });
+  }
+
+  async notifyStoreOwnersPayment(ownerId, order) {
+    return this.notify(ownerId, {
+      type: "STORE_PAYMENT_CONFIRMED",
+      title: "Order Paid! 📦",
+      message: `Payment for order #${order.id.slice(0, 8)} has been confirmed. Please prepare the package and drop it at the closest Karakata office address for shipping.`,
+      metadata: { orderId: order.id },
+      sendEmail: true,
+    });
+  }
+
   async notifyOrderShipped(user, order, shipmentId) {
     console.log(`[NotificationService] notifyOrderShipped called for order: ${order.id}`);
     return this.notify(user.id, {
@@ -69,6 +89,24 @@ class NotificationService {
       title: "Order Delivered!",
       message: `Your order #${order.id.slice(0, 8)} has been delivered. Enjoy your purchase!`,
       metadata: { orderId: order.id },
+      sendEmail: true,
+    });
+  }
+
+  async notifyShipmentStatus(user, order, shipment, status, location = null) {
+    const messages = {
+      picked_up: { type: "SHIPMENT_PICKED_UP", title: "Your order has been picked up", message: `The rider has picked up order #${order.id.slice(0, 8)} from the store.` },
+      shipped: { type: "ORDER_SHIPPED", title: "Your order is on the way", message: `Order #${order.id.slice(0, 8)} has left the store and is on the way to you.` },
+      in_transit: { type: "SHIPMENT_IN_TRANSIT", title: "Your order is in transit", message: `Order #${order.id.slice(0, 8)} is currently in transit.` },
+      delivered: { type: "ORDER_DELIVERED", title: "Your order has been delivered", message: `Order #${order.id.slice(0, 8)} has been delivered.` },
+      failed: { type: "SHIPMENT_FAILED", title: "Delivery needs attention", message: `Delivery for order #${order.id.slice(0, 8)} could not be completed.` },
+    };
+    const update = messages[status];
+    if (!update) return null;
+    return this.notify(user.id, {
+      ...update,
+      message: location ? `${update.message} Location: ${location}.` : update.message,
+      metadata: { orderId: order.id, shipmentId: shipment.id, status, location },
       sendEmail: true,
     });
   }

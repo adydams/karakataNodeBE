@@ -12,6 +12,11 @@ const Discount = sequelize.define("Discount", {
     allowNull: false,
     unique: true,
   },
+  title: {
+    type: DataTypes.STRING(120),
+    allowNull: false,
+    comment: "Customer-facing promotion title used in adverts and checkout messaging",
+  },
   type: {
     type: DataTypes.ENUM("PERCENTAGE", "FLAT"),
     allowNull: false,
@@ -46,8 +51,26 @@ const Discount = sequelize.define("Discount", {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+  isAutomatic: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: "True if the discount is applied automatically to eligible orders",
+  },
+  displayInAdverts: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  advertStartDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  advertEndDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   tableName: "discounts",
+
   timestamps: true,
 });
 

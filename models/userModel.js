@@ -9,7 +9,7 @@ const sequelize = require('../db/database');
     email: { type: DataTypes.STRING(160), allowNull: false, unique: true, validate: { isEmail: true } },
     phone: { type: DataTypes.STRING(40) },
    // passwordHash will be null for OAuth-only users
-    passwordHash: { type: DataTypes.STRING(255), allowNull: false },
+    passwordHash: { type: DataTypes.STRING(255), allowNull: true },
     isActive: {
       type: DataTypes.BOOLEAN ,
       defaultValue: false

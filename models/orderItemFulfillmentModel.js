@@ -30,6 +30,19 @@ const OrderItemFulfillment = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    status: {
+      type: DataTypes.ENUM("PENDING", "PICKED_UP", "IN_TRANSIT", "DELIVERED", "FAILED", "RETURNED"),
+      defaultValue: "PENDING",
+      allowNull: false,
+    },
+    statusNote: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    statusUpdatedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: "order_item_fulfillments",

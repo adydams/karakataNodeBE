@@ -57,9 +57,23 @@ const Order = sequelize.define(
       allowNull: true,
     },
 
+    discountId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+
+    discountAmount: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0,
+    },
+
     shippingMethod: {
       type: DataTypes.ENUM("SHIPPING", "PICKUP"),
       defaultValue: "SHIPPING",
+    },
+    pickupHubId: {
+      type: DataTypes.UUID,
+      allowNull: true,
     },
 
     logisticsRequestToken: {
@@ -76,7 +90,10 @@ const Order = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
-
+    vatAmount: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0,
+    },
     status: {
       type: DataTypes.ENUM("PENDING", "PAID", "FAILED", "CANCELLED"),
       defaultValue: "PENDING",

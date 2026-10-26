@@ -1,8 +1,25 @@
 const CartItem = require('../models/cartItemModel');
 const Cart = require('../models/cartModel')
 const Product = require('../models/productModel')
+const { Inventory } = require('../models');
+const { Op } = require('sequelize');
 
 class CartItemServices {
+  /**
+   * Total sellable stock for a product across all stations
+   * (quantityOnHand - quantityReserved, floored at 0 per station).
+   */
+  async getAvailableStock(productId) {
+    const rows = await Inventory.findAll({
+      where: { productId, isDeleted: false },
+      attributes: ["quantityOnHand", "quantityReserved"],
+    });
+    return rows.reduce(
+      (total, inv) => total + Math.max(Number(inv.quantityOnHand || 0) - Number(inv.quantityReserved || 0), 0),
+      0
+    );
+  }
+
   //  async addItems(cartId, items) {
   //   if (!Array.isArray(items) || items.length === 0) {
   //     throw new Error("Items array is required");
@@ -19,9 +36,25 @@ class CartItemServices {
    
 // Handle a single item (internal helper)
 async  addOrUpdateItem(cartId, productId, quantity = 1) {
+  const product = await Product.findByPk(productId);
+  if (!product || product.isDeleted) {
+    throw new Error("Product not found");
+  }
+
   const existingItem = await CartItem.findOne({
     where: { cartId, productId },
   });
+
+  const requestedTotal = (existingItem ? existingItem.quantity : 0) + quantity;
+  const availableStock = await this.getAvailableStock(productId);
+  if (availableStock <= 0) {
+    throw new Error(`${product.name} is out of stock`);
+  }
+  if (requestedTotal > availableStock) {
+    throw new Error(
+      `Only ${availableStock} unit(s) of ${product.name} available${existingItem ? ` (you already have ${existingItem.quantity} in your cart)` : ""}`
+    );
+  }
 
   if (existingItem) {
     existingItem.quantity += quantity;
@@ -56,17 +89,21 @@ async addItemToCart (cartId, productId, quantity = 1) {
   // }
 
   async updateQuantity(id, quantity) {
-    const [updated] = await CartItem.update(
-    { quantity },
-    { where: { id, isDeleted: false } }
-  );
+    const item = await CartItem.findOne({ where: { id, isDeleted: false } });
+    if (!item) {
+      return null;
+    }
 
-  if (!updated) {
-    //console.log('No record updated — invalid ID or already deleted.');
-    return null;
-  }
+    if (Number(quantity) > 0) {
+      const availableStock = await this.getAvailableStock(item.productId);
+      if (Number(quantity) > availableStock) {
+        throw new Error(`Only ${availableStock} unit(s) available`);
+      }
+    }
 
-  return await CartItem.findByPk(id);
+    await CartItem.update({ quantity }, { where: { id, isDeleted: false } });
+
+    return await CartItem.findByPk(id);
  }
 
   // async getCartItems(cartId) {

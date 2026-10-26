@@ -1,4 +1,4 @@
-const { Product, OrderItem, User, Order, sequelize } = require("../models");
+const { Product, OrderItem, User, Order, Role, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
 exports.getTopProducts = async (req, res) => {
@@ -8,7 +8,7 @@ exports.getTopProducts = async (req, res) => {
       attributes: [
         "productId",
         [sequelize.fn("SUM", sequelize.col("quantity")), "sales"],
-        [sequelize.fn("SUM", sequelize.literal("quantity * price")), "revenue"],
+        [sequelize.fn("SUM", sequelize.literal("OrderItem.quantity * OrderItem.price")), "revenue"],
       ],
       group: ["productId"],
       order: [[sequelize.literal("sales"), "DESC"]],
@@ -57,19 +57,23 @@ exports.getCustomerStats = async (req, res) => {
 
     // 1. Total Customers
     const totalCustomers = await User.count({
-      where: {
-        "$role.name$": "Customer"
-      },
-      include: [{ model: require("../models").Role, as: "role" }]
+      include: [{
+        model: Role,
+        as: "role",
+        where: { name: "Customer" }
+      }]
     });
 
     // 2. New Customers (last 30 days)
     const newCustomers = await User.count({
       where: {
-        createdAt: { [Op.gte]: thirtyDaysAgo },
-        "$role.name$": "Customer"
+        createdAt: { [Op.gte]: thirtyDaysAgo }
       },
-      include: [{ model: require("../models").Role, as: "role" }]
+      include: [{
+        model: Role,
+        as: "role",
+        where: { name: "Customer" }
+      }]
     });
 
     // 3. Retargeted Customers (more than 1 order)
@@ -78,15 +82,20 @@ exports.getCustomerStats = async (req, res) => {
         'id',
         [sequelize.fn('COUNT', sequelize.col('orders.id')), 'orderCount']
       ],
-      include: [{
-        model: require("../models").Order,
-        as: 'orders',
-        attributes: []
-      }],
-      where: { '$role.name$': 'Customer' },
-      group: ['User.id'],
+      include: [
+        {
+          model: Role,
+          as: "role",
+          where: { name: "Customer" }
+        },
+        {
+          model: Order,
+          as: 'orders',
+          attributes: []
+        }
+      ],
+      group: ['User.id', 'role.id'],
       having: sequelize.literal('COUNT(orders.id) > 1'),
-      include: [{ model: require("../models").Role, as: "role" }]
     });
 
     res.json({

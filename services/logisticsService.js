@@ -3,6 +3,53 @@ const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapterSafe
 const ShippingPriceCalculator = require("./shippingPriceCalculator");
 const { Shipment, Address, Order, User, Product, StorePickupStation } = require("../models");
 
+const normalizeShipmentStatus = (value) => {
+  const raw = String(value ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  const statusMap = {
+    pending: "pending",
+    processing: "processing",
+    accepted: "accepted",
+    assigned: "assigned",
+    order_received: "order_received",
+    picked_up: "picked_up",
+    shipped: "shipped",
+    in_transit: "in_transit",
+    out_for_delivery: "out_for_delivery",
+    delivered: "delivered",
+    completed: "delivered",
+    returned: "returned",
+    failed: "failed",
+    delivery_failed: "failed",
+    cancelled: "cancelled",
+    canceled: "cancelled",
+  };
+
+  return statusMap[raw] || raw || "pending";
+};
+
+const mapShipmentStatusToOrderLogisticsStatus = (status) => {
+  const normalized = normalizeShipmentStatus(status);
+  const statusMap = {
+    pending: "PROCESSING",
+    processing: "PROCESSING",
+    accepted: "PROCESSING",
+    assigned: "PROCESSING",
+    order_received: "PROCESSING",
+    picked_up: "IN_TRANSIT",
+    shipped: "SHIPPED",
+    in_transit: "IN_TRANSIT",
+    out_for_delivery: "IN_TRANSIT",
+    delivered: "DELIVERED",
+    // Shipment status remains the source of truth for returns. The order enum
+    // does not have a RETURNED value, so keep logistics out of DELIVERED.
+    returned: "PROCESSING",
+    failed: "DELIVERY_FAILED",
+    cancelled: "DELIVERY_FAILED",
+  };
+
+  return statusMap[normalized] || "PROCESSING";
+};
+
 /**
  * LogisticsService
  *
@@ -13,6 +60,20 @@ const { Shipment, Address, Order, User, Product, StorePickupStation } = require(
  *  4. getShipmentStatus           → reads from DB (updated by webhook or poll)
  */
 const LogisticsService = {
+  normalizeShipmentStatus,
+  mapShipmentStatusToOrderLogisticsStatus,
+
+  async syncOrderLogisticsStatus(orderId, shipmentStatus) {
+    if (!orderId) return null;
+
+    const normalizedStatus = normalizeShipmentStatus(shipmentStatus);
+    const logisticsStatus = mapShipmentStatusToOrderLogisticsStatus(normalizedStatus);
+
+    return Order.update(
+      { logisticsStatus },
+      { where: { id: orderId } }
+    );
+  },
   /**
    * Validates a local address with ShipBubble and stores the address_code.
    * Call this when a user saves/updates a shipping address.
@@ -39,6 +100,9 @@ const LogisticsService = {
       phone: user.phone || "",
       address: fullAddress,
       code: addr.shipbubbleAddressCode || undefined, // optional, if already registered
+      // ShipBubble uses coordinates for precise geocoding/valuation when provided.
+      latitude: addr.latitude ?? undefined,
+      longitude: addr.longitude ?? undefined,
     });
     console.log("ShipBubble validation result ******:", result);
 
@@ -143,8 +207,9 @@ const LogisticsService = {
       const couriers = (Array.isArray(rawCouriers) ? rawCouriers : Object.values(rawCouriers)).map(c => ({
         id: c.id ?? c.courier_id ?? c.code ?? c.service_code ?? String(c.name || '').toLowerCase(),
         name: c.name || c.courier_name || c.provider || null,
-        fee: Number(c.fee ?? c.amount ?? c.price ?? c.shipping_fee ?? c.rate ?? 0),
-        estimated_days: c.estimated_days ?? c.eta ?? c.estimated_delivery_days ?? null,
+        // ShipBubble quotes the price as `total`; keep legacy field names as fallbacks.
+        fee: Number(c.fee ?? c.amount ?? c.price ?? c.shipping_fee ?? c.rate ?? c.total ?? c.total_fee ?? c.total_price ?? c.grand_total ?? 0),
+        estimated_days: c.estimated_days ?? c.eta ?? c.estimated_delivery_days ?? c.delivery_estimation ?? null,
         service_code: c.service_code ?? c.code ?? null,
         raw: c,
       }));
@@ -156,40 +221,51 @@ const LogisticsService = {
         console.log(`[Internal Shipping] Total weight: ${totalWeight}kg`);
 
         let origin = null;
+        let originStation = null;
         if (senderStationId) {
-          const station = await StorePickupStation.findByPk(senderStationId);
-          if (station) {
-            origin = { latitude: station.latitude, longitude: station.longitude };
+          originStation = await StorePickupStation.findByPk(senderStationId);
+          if (originStation) {
+            origin = { latitude: originStation.latitude, longitude: originStation.longitude };
             console.log(`[Internal Shipping] Origin (Station ${senderStationId}):`, origin);
           }
         } else {
           const { Op } = require('sequelize');
-          const fallbackStation = await StorePickupStation.findOne({ where: { latitude: { [Op.ne]: null } } });
-          if (fallbackStation) {
-            origin = { latitude: fallbackStation.latitude, longitude: fallbackStation.longitude };
-            console.log(`[Internal Shipping] Origin (Fallback Station ${fallbackStation.id}):`, origin);
-          } else {
-            console.log("[Internal Shipping] No origin station with coordinates found.");
+          originStation = await StorePickupStation.findOne({ where: { latitude: { [Op.ne]: null } } });
+          if (originStation) {
+            origin = { latitude: originStation.latitude, longitude: originStation.longitude };
+            console.log(`[Internal Shipping] Origin (Fallback Station ${originStation.id}):`, origin);
           }
         }
 
         const destination = { latitude: addr.latitude, longitude: addr.longitude };
         console.log(`[Internal Shipping] Destination:`, destination);
 
-        const internalFee = await ShippingPriceCalculator.calculateInternalPrice(origin, destination, totalWeight);
-        console.log(`[Internal Shipping] Calculated Fee: ₦${internalFee}`);
+        if (!origin || !origin.latitude || !origin.longitude) {
+          // No station has coordinates: surface an actionable message instead of
+          // silently quoting a flat fallback fee.
+          const message = originStation
+            ? `Karakata Internal Fleet is unavailable: pickup station "${originStation.name}" has no pinned location. Please update its coordinates in the admin dashboard.`
+            : "Karakata Internal Fleet is unavailable: no pickup station has a pinned location. Please update the pickup stations' coordinates in the admin dashboard.";
+          console.warn(`[Internal Shipping] ${message}`);
+          ratesData.internalFleetUnavailable = message;
+        } else {
+          const internalFee = await ShippingPriceCalculator.calculateInternalPrice(origin, destination, totalWeight);
+          console.log(`[Internal Shipping] Calculated Fee: ₦${internalFee}`);
 
-        couriers.unshift({
-          id: 'karakata-internal',
-          name: 'Karakata Internal Fleet',
-          fee: internalFee,
-          estimated_days: '1-2',
-          service_code: 'INTERNAL',
-          raw: { provider: 'internal' }
-        });
-        console.log(`[Internal Shipping] Successfully added to courier list. Total couriers: ${couriers.length}`);
+          couriers.unshift({
+            id: 'karakata-internal',
+            name: 'Karakata Internal Fleet',
+            fee: internalFee,
+            estimated_days: '1-2',
+            service_code: 'INTERNAL',
+            raw: { provider: 'internal' }
+          });
+          console.log(`[Internal Shipping] Successfully added to courier list. Total couriers: ${couriers.length}`);
+        }
       } catch (internalErr) {
         console.error('[Internal Shipping] Fatal error during calculation:', internalErr);
+        ratesData.internalFleetUnavailable =
+          internalErr.message || "Karakata Internal Fleet is currently unavailable.";
       }
 
       ratesData = { request_token: token, couriers };
@@ -229,21 +305,23 @@ const LogisticsService = {
     });
 
     // Save to local DB
+    const normalizedStatus = normalizeShipmentStatus(shipmentData.status || "pending");
+
     const shipment = await Shipment.create({
       orderId,
-      shipbubbleOrderId: shipmentData.order_id,   // e.g. SB-2CF48224272
+      providerOrderId: shipmentData.order_id,   // e.g. SB-2CF48224272
       courier: courierName || shipmentData.courier?.name,
       serviceCode,
       courierId: String(courierId),
       trackingUrl: shipmentData.tracking_url,
-      status: shipmentData.status || "pending",
+      status: normalizedStatus,
       shippingFee: shippingFee || shipmentData.payment?.shipping_fee,
       deliveryEta,
       rawResponse: shipmentData,
     });
 
-    // Update order status
-    await order.update({ logisticsStatus: "PROCESSING" });
+    // Update order status from the canonical shipment lifecycle
+    await LogisticsService.syncOrderLogisticsStatus(order.id, normalizedStatus);
 
     return shipment;
   },
@@ -261,27 +339,45 @@ const LogisticsService = {
    * Update shipment status — called by webhook handler or admin.
    */
   async updateShipmentStatus(shipbubbleOrderId, status) {
-    const shipment = await Shipment.findOne({ where: { shipbubbleOrderId } });
+    const shipment = await Shipment.findOne({ where: { providerOrderId: shipbubbleOrderId } });
     if (!shipment) throw new Error("Shipment not found");
 
-    await shipment.update({ status });
+    const normalizedStatus = normalizeShipmentStatus(status);
+    await shipment.update({ status: normalizedStatus });
 
-    // Mirror to order
-    const statusMap = {
-      pending: "PROCESSING",
-      shipped: "SHIPPED",
-      in_transit: "IN_TRANSIT",
-      delivered: "DELIVERED",
-      failed: "DELIVERY_FAILED",
-    };
-    if (statusMap[status]) {
-      await Order.update(
-        { logisticsStatus: statusMap[status] },
-        { where: { id: shipment.orderId } }
-      );
+    await LogisticsService.syncOrderLogisticsStatus(shipment.orderId, normalizedStatus);
+
+    // Notify the customer (app + email) — best-effort, never blocks the webhook.
+    try {
+      const notificationService = require("./notificationService");
+      const order = await Order.findByPk(shipment.orderId);
+      const user = order ? await User.findByPk(order.userId) : null;
+      if (order && user) {
+        await notificationService.notifyShipmentStatus(user, order, shipment, normalizedStatus);
+        if (normalizedStatus === "delivered") {
+          const { OrderItem } = require("../models");
+          await OrderItem.update(
+            { status: "DELIVERED" },
+            { where: { orderId: order.id, isDeleted: false } }
+          );
+        }
+      }
+    } catch (err) {
+      console.error(`Shipment status notification failed for ${shipment.id}:`, err.message);
     }
 
     return shipment;
+  },
+
+  async fetchReturnRates({ providerOrderId, pickupDate, deliveryInstructions, senderPhone, receiverPhone }) {
+    if (!providerOrderId) throw new Error("ShipBubble shipment order ID is required");
+    return ShipBubbleAdapter.fetchReturnRates({
+      orderId: providerOrderId,
+      pickupDate,
+      deliveryInstructions,
+      senderPhone,
+      receiverPhone,
+    });
   },
 
   /**

@@ -35,6 +35,7 @@ const pickupStationRoutes = require('./routes/pickupStationRoutes');
 const driverRoutes = require('./routes/driverRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const hubRoutes = require('./routes/hubRoutes');
 
 
 const app = express();
@@ -167,7 +168,14 @@ app.post(
 // BODY PARSERS
 // ============================================
 
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({
+  limit: '50mb',
+  verify: (req, res, buffer) => {
+    if (req.originalUrl.startsWith("/api/logistics/webhook")) {
+      req.rawBody = buffer.toString("utf8");
+    }
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 
@@ -265,6 +273,7 @@ app.use('/api/admin/settings', routeLogger('ADMIN SETTINGS'), adminSettingsRoute
 app.use('/api/pickup-stations', routeLogger('PICKUP STATIONS'), pickupStationRoutes);
 app.use('/api/driver', routeLogger('DRIVER'), driverRoutes);
 app.use('/api/notifications', routeLogger('NOTIFICATIONS'), notificationRoutes);
+app.use('/api/hubs', routeLogger('HUBS'), hubRoutes);
 app.use('/api/audit', routeLogger('AUDIT'), auditRoutes);
 
 

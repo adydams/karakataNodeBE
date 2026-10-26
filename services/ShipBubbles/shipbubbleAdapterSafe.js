@@ -16,8 +16,14 @@ function shipbubbleHeaders() {
 const ShipBubbleAdapterSafe = {
   async validateAddress({ name, email, phone, address, latitude, longitude }) {
     const payload = { name, email, phone, address };
-    if (latitude !== undefined) payload.latitude = latitude;
-    if (longitude !== undefined) payload.longitude = longitude;
+    // Only include coordinates when they are usable numbers — null/undefined
+    // values must be omitted so ShipBubble geocodes from the address text.
+    if (latitude !== undefined && latitude !== null && Number.isFinite(Number(latitude))) {
+      payload.latitude = Number(latitude);
+    }
+    if (longitude !== undefined && longitude !== null && Number.isFinite(Number(longitude))) {
+      payload.longitude = Number(longitude);
+    }
 
     try {
       const res = await axios.post(`${BASE_URL}/shipping/address/validate`, payload, { headers: shipbubbleHeaders() });
@@ -76,6 +82,28 @@ const ShipBubbleAdapterSafe = {
     }
   },
 
+  async fetchReturnRates({ orderId, pickupDate, deliveryInstructions, senderPhone, receiverPhone }) {
+    const payload = { pickup_date: pickupDate };
+    if (deliveryInstructions) payload.delivery_instructions = deliveryInstructions;
+    if (senderPhone) payload.sender_phone = senderPhone;
+    if (receiverPhone) payload.reciever_phone = receiverPhone;
+
+    try {
+      const res = await axios.post(
+        `${BASE_URL}/shipping/returns/${encodeURIComponent(orderId)}/fetch_rates`,
+        payload,
+        { headers: shipbubbleHeaders() }
+      );
+      if (res.data.status && res.data.status !== "success") {
+        throw new Error(res.data.message || "ShipBubble return rates failed");
+      }
+      return res.data.data;
+    } catch (err) {
+      console.error("ShipBubble fetchReturnRates error", err.response?.data || err);
+      throw new Error(err.response?.data?.message || err.message || "ShipBubble return rates failed");
+    }
+  },
+
   async getCategories() {
     const res = await axios.get(`${BASE_URL}/shipping/labels/categories`, { headers: shipbubbleHeaders() });
     return res.data.data;
@@ -99,6 +127,25 @@ const ShipBubbleAdapterSafe = {
   async fundWallet(amount) {
     const res = await axios.post(`${BASE_URL}/shipping/wallet/fund`, { amount }, { headers: shipbubbleHeaders() });
     return res.data.data;
+  },
+
+  async cancelShipment(orderId) {
+    if (!orderId) throw new Error("ShipBubble order ID is required");
+    try {
+      const res = await axios.post(`${BASE_URL}/shipping/labels/cancel/${orderId}`, {}, { headers: shipbubbleHeaders() });
+      if (res.data?.status !== "success") {
+        throw new Error(res.data.message || 'ShipBubble cancel shipment failed');
+      }
+      return {
+        confirmed: true,
+        status: res.data.status,
+        message: res.data.message || "Shipment successfully cancelled",
+      };
+    } catch (err) {
+      console.error('ShipBubble cancelShipment error', err.response?.data || err);
+      const msg = err.response?.data?.message || err.message || 'ShipBubble cancel shipment failed';
+      throw new Error(msg);
+    }
   },
 };
 

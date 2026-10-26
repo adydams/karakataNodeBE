@@ -1,5 +1,20 @@
 const nodemailer = require("nodemailer");
 const PDFDocument = require("pdfkit");
+const axios = require("axios");
+
+// pdfkit only embeds JPEG/PNG; product images are often AVIF/WebP from
+// Cloudinary, so convert to PNG before embedding.
+let sharp = null;
+try { sharp = require("sharp"); } catch (_) { /* optional */ }
+
+async function toPdfSafeImage(imageUrl) {
+  const response = await axios.get(imageUrl, { responseType: "arraybuffer", timeout: 5000 });
+  let data = Buffer.from(response.data);
+  const isJpeg = data[0] === 0xff && data[1] === 0xd8;
+  const isPng = data[0] === 0x89 && data[1] === 0x50;
+  if (isJpeg || isPng || !sharp) return data;
+  return sharp(data).png().toBuffer();
+}
 
 class EmailService {
   async sendEmail({ to, subject, text, html, attachments = [] }) {
@@ -36,10 +51,10 @@ class EmailService {
   }
 
   async generateInvoicePdf(orderDetails) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         const doc = new PDFDocument({
-          margin: 42,
+          margin: 0,
           size: 'A4',
           bufferPages: true
         });
@@ -59,95 +74,142 @@ class EmailService {
         doc.on('end', () => resolve(Buffer.concat(buffers)));
         doc.on('error', reject);
 
-        const {
-          orderId,
-          totalAmount,
-          shippingFee = 0,
-          customerName,
-          customerEmail,
-          customerPhone,
-          shippingAddress,
-          shippingDetails = {},
-          status,
-          createdAt,
-          items = []
-        } = orderDetails;
-        const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-        const left = doc.page.margins.left;
-        const right = left + pageWidth;
-        const money = value => `₦${Number(value || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
-        const date = createdAt ? new Date(createdAt).toLocaleDateString("en-US", {
-          month: "long", day: "numeric", year: "numeric"
-        }) : new Date().toLocaleDateString();
-        const subTotal = items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
-        const baseFee = Number(shippingDetails.baseFee || 0);
-        const sourcingFee = Number(shippingDetails.sourcingFee || Math.max(Number(shippingFee) - baseFee, 0));
-
-        doc.rect(0, 0, doc.page.width, doc.page.height).fill("#fffdf9");
-        doc.fillColor("#f57c00").font(fontBoldPath).fontSize(22).text("K", left, 42, {
-          width: 42, height: 42, align: "center", valign: "center"
-        });
-        doc.fillColor("#574235").font(fontBoldPath).fontSize(18).text("Karakata Marketplace", left + 55, 47);
-        doc.fillColor("#888").font(fontPath).fontSize(9).text("Lagos, Nigeria", left + 55, 70);
-        doc.fillColor("#d9d0ca").font(fontBoldPath).fontSize(30).text("INVOICE", right - 170, 46, { width: 170, align: "right" });
-        doc.fillColor("#574235").font(fontPath).fontSize(10).text(`#${orderId?.slice(0, 8) || "N/A"}`, right - 170, 82, { width: 170, align: "right" });
-
-        let currentY = 125;
-        doc.strokeColor("#e8e1db").dash(2, { space: 5 }).moveTo(left, currentY).lineTo(right, currentY).stroke().undash();
-        currentY += 22;
-
-        doc.fillColor("#999").font(fontBoldPath).fontSize(8).text("BILL TO", left, currentY);
-        doc.fillColor("#574235").font(fontBoldPath).fontSize(11).text(customerName || "Customer", left, currentY + 16);
-        doc.font(fontPath).fontSize(9).text(customerEmail || "N/A", left, currentY + 32);
-        doc.text(customerPhone || "N/A", left, currentY + 46);
-        doc.text(shippingAddress || "N/A", left, currentY + 60, { width: 220 });
-
-        const metaX = right - 220;
-        doc.fillColor("#999").font(fontBoldPath).fontSize(8).text("ORDER DATE", metaX, currentY);
-        doc.fillColor("#574235").font(fontPath).fontSize(10).text(date, metaX, currentY + 16);
-        doc.fillColor("#999").font(fontBoldPath).fontSize(8).text("STATUS", metaX + 110, currentY);
-        doc.fillColor("#f57c00").font(fontBoldPath).fontSize(10).text(status || "PAID", metaX + 110, currentY + 16);
-
-        currentY += 105;
-        doc.fillColor("#574235").font(fontBoldPath).fontSize(10).text("PRODUCT", left, currentY);
-        doc.text("QTY", left + 290, currentY);
-        doc.text("PRICE", left + 345, currentY);
-        doc.text("TOTAL", right - 75, currentY, { width: 75, align: "right" });
-        doc.strokeColor("#e8e1db").moveTo(left, currentY + 18).lineTo(right, currentY + 18).stroke();
-        currentY += 32;
-
-        items.forEach(item => {
-          doc.fillColor("#574235").font(fontPath).fontSize(10).text(item.productName || "Unknown Product", left, currentY, { width: 270 });
-          doc.fillColor("#777").text(String(item.quantity || 0), left + 290, currentY);
-          doc.text(money(item.price), left + 345, currentY);
-          doc.fillColor("#574235").font(fontBoldPath).text(money(item.subtotal), right - 75, currentY, { width: 75, align: "right" });
-          currentY += 25;
-        });
-
-        currentY += 8;
-        doc.strokeColor("#e8e1db").moveTo(left, currentY).lineTo(right, currentY).stroke();
-        currentY += 20;
-        const summaryX = right - 225;
-        const summaryRow = (label, value, bold = false) => {
-          doc.fillColor(bold ? "#f57c00" : "#777").font(bold ? fontBoldPath : fontPath).fontSize(bold ? 13 : 9)
-            .text(label, summaryX, currentY);
-          doc.text(value, right - 90, currentY, { width: 90, align: "right" });
-          currentY += bold ? 27 : 18;
-        };
-        summaryRow("Sub Total", money(subTotal));
-        summaryRow("Courier Base Fee", money(baseFee));
-        summaryRow("Sourcing Fee", money(sourcingFee));
-        summaryRow("Shipping Total", money(shippingFee));
-        doc.strokeColor("#e8e1db").moveTo(summaryX, currentY).lineTo(right, currentY).stroke();
-        currentY += 14;
-        summaryRow("Order Total", money(totalAmount), true);
-        doc.fillColor("#999").font(fontPath).fontSize(9).text("Thank you for choosing Karakata Marketplace!", left, doc.page.height - 55, { align: "center", width: pageWidth });
-
+        await this.renderInvoicePage(doc, orderDetails, fontPath, fontBoldPath);
         doc.end();
       } catch (error) {
         reject(error);
       }
     });
+  }
+
+  async renderInvoicePage(doc, orderDetails, fontPath, fontBoldPath) {
+    const {
+      orderId,
+      totalAmount,
+      shippingFee = 0,
+      customerName,
+      customerEmail,
+      customerPhone,
+      shippingAddress,
+      shippingDetails = {},
+      status,
+      createdAt,
+      items = []
+    } = orderDetails;
+    const width = doc.page.width;
+    const height = doc.page.height;
+    const money = value => `₦${Number(value || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
+    const date = createdAt ? new Date(createdAt).toLocaleDateString("en-US", {
+      month: "long", day: "numeric", year: "numeric"
+    }) : new Date().toLocaleDateString();
+    const subTotal = items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+    const baseFee = Number(shippingDetails.baseFee || 0);
+    const sourcingFee = Number(shippingDetails.sourcingFee || Math.max(Number(shippingFee) - baseFee, 0));
+    const left = 48;
+    const contentWidth = width - 96;
+    const right = left + contentWidth;
+    const orange = "#f45100";
+    const navy = "#16284f";
+    const muted = "#52617d";
+
+    // Keep the downloaded PDF visually consistent with the invoice shown in the browser.
+    doc.rect(0, 0, width, height).fill("#fff7ed");
+    // Soft decorative shapes mirror the checkout confirmation without affecting readability.
+    [
+      [28, 18, 92, "#fed7aa"],
+      [width - 30, 155, 70, "#fdba74"],
+      [width - 5, 410, 90, "#fed7aa"],
+      [80, height - 18, 78, "#ffedd5"],
+      [width - 120, height - 15, 105, "#ccfbf1"]
+    ].forEach(([x, y, radius, color]) => {
+      doc.circle(x, y, radius).fillOpacity(0.7).fill(color).fillOpacity(1);
+    });
+    doc.circle(34, 315, 45).lineWidth(8).strokeOpacity(0.18).stroke("#f7a400");
+    doc.circle(34, 315, 60).lineWidth(5).strokeOpacity(0.12).stroke("#f7a400");
+
+    doc.fillColor(navy).font(fontBoldPath).fontSize(27)
+      .text("Thank you for", left, 48);
+    doc.text("your purchase!", left, 82);
+    doc.fillColor(muted).font(fontPath).fontSize(9.5)
+      .text("Your order will be processed within 24 hours during working days.", left, 132, { width: 225, lineGap: 2 });
+    doc.text("We will notify you by email once your order has been shipped.", left, 164, { width: 225, lineGap: 2 });
+
+    const summaryX = 300;
+    doc.fillColor(navy).font(fontBoldPath).fontSize(15).text("Order Summary", summaryX, 70);
+    doc.strokeColor("#dce5e5").dash(1, { space: 5 }).moveTo(summaryX, 103).lineTo(right, 103).stroke().undash();
+    const meta = [
+      ["Date", date],
+      ["Order Number", orderId?.slice(0, 8) || "N/A"],
+      ["Status", status || "PAID"]
+    ];
+    meta.forEach(([label, value], index) => {
+      const x = summaryX + index * 96;
+      doc.fillColor(navy).font(fontPath).fontSize(8).text(label, x, 120);
+      doc.fillColor(index === 2 ? orange : navy).font(fontBoldPath).fontSize(9)
+        .text(value, x, 137, { width: 88, lineGap: 1 });
+      if (index < 2) doc.strokeColor("#dce5e5").moveTo(x + 82, 117).lineTo(x + 82, 166).stroke();
+    });
+    doc.strokeColor("#dce5e5").dash(1, { space: 5 }).moveTo(summaryX, 181).lineTo(right, 181).stroke().undash();
+
+    doc.fillColor(navy).font(fontBoldPath).fontSize(13).text("Billing Address", left, 214);
+    const details = [
+      ["Name:", customerName || "Customer"],
+      ["Address:", shippingAddress || "N/A"],
+      ["Phone:", customerPhone || "N/A"],
+      ["Email:", customerEmail || "N/A"]
+    ];
+    let detailY = 250;
+    details.forEach(([label, value]) => {
+      doc.fillColor(muted).font(fontBoldPath).fontSize(8.5).text(label, left, detailY);
+      doc.fillColor(navy).font(fontPath).fontSize(9).text(value, left + 54, detailY, { width: 205, lineGap: 1 });
+      detailY += label === "Address:" ? 34 : 19;
+    });
+
+    const cardX = summaryX;
+    let cardY = 208;
+    for (const [index, item] of items.entries()) {
+      const cardHeight = 72;
+      doc.roundedRect(cardX, cardY, right - cardX, cardHeight, 6).fill("#ffffff");
+      doc.roundedRect(cardX, cardY, right - cardX, cardHeight, 6).strokeColor("#d9e5e5").stroke();
+      const image = item.productImage || item.image;
+      if (image && /^https?:\/\//i.test(image)) {
+        try {
+          const imageData = await toPdfSafeImage(image);
+          doc.image(imageData, cardX + 8, cardY + 8, { fit: [58, 56], align: "center", valign: "center" });
+        } catch (imageError) {
+          doc.roundedRect(cardX + 8, cardY + 8, 58, 56, 4).fill("#f1f5f4");
+        }
+      } else {
+        doc.roundedRect(cardX + 8, cardY + 8, 58, 56, 4).fill("#f1f5f4");
+      }
+      doc.fillColor(navy).font(fontBoldPath).fontSize(9.5)
+        .text(item.productName || "Unknown Product", cardX + 78, cardY + 19, { width: 120 });
+      doc.fillColor(muted).font(fontPath).fontSize(8).text(`Quantity: ${item.quantity || 0}`, cardX + 78, cardY + 38);
+      doc.fillColor(navy).font(fontBoldPath).fontSize(10).text(money(item.subtotal), right - 92, cardY + 26, { width: 82, align: "right" });
+      cardY += cardHeight + 8;
+      if (index >= 7 && items.length > 8) break;
+    }
+
+    let totalY = Math.max(cardY + 15, 430);
+    doc.strokeColor("#dce5e5").dash(1, { space: 5 }).moveTo(summaryX, totalY).lineTo(right, totalY).stroke().undash();
+    totalY += 22;
+    const rows = [
+      ["Sub Total", subTotal],
+      ["Courier Base Fee", baseFee],
+      ["Sourcing Fee", sourcingFee],
+      ["Shipping Total", shippingFee]
+    ];
+    rows.forEach(([label, value]) => {
+      doc.fillColor(muted).font(fontPath).fontSize(8.5).text(label, summaryX + 12, totalY);
+      doc.text(money(value), right - 92, totalY, { width: 82, align: "right" });
+      totalY += 18;
+    });
+    doc.strokeColor("#dce5e5").dash(1, { space: 5 }).moveTo(summaryX, totalY).lineTo(right, totalY).stroke().undash();
+    totalY += 20;
+    doc.fillColor(navy).font(fontBoldPath).fontSize(13).text("Order Total", summaryX + 12, totalY);
+    doc.text(money(totalAmount), right - 110, totalY, { width: 100, align: "right" });
+    doc.fillColor(muted).font(fontPath).fontSize(8).text(`Invoice #${orderId || "N/A"}`, left, height - 45);
+    doc.text("Karakata Commerce • Lagos, Nigeria", right - 190, height - 45, { width: 190, align: "right" });
   }
 
   async streamInvoicePdf(orderDetails, res) {
@@ -159,6 +221,45 @@ class EmailService {
       if (!res.headersSent) {
         res.status(500).send("Error generating PDF");
       }
+    }
+  }
+
+  async generateInvoiceBundlePdf(invoices) {
+        return new Promise(async (resolve, reject) => {
+          try {
+            const doc = new PDFDocument({ margin: 0, size: "A4", bufferPages: true });
+            const fontPath = "C:/Windows/Fonts/arial.ttf";
+            const fontBoldPath = "C:/Windows/Fonts/arialbd.ttf";
+            try {
+              doc.font(fontPath);
+            } catch (error) {
+              console.warn("Could not load Arial font, falling back to Helvetica");
+            }
+
+            const buffers = [];
+            doc.on("data", buffers.push.bind(buffers));
+            doc.on("end", () => resolve(Buffer.concat(buffers)));
+            doc.on("error", reject);
+
+            for (const [index, invoice] of invoices.entries()) {
+              if (index > 0) doc.addPage();
+              await this.renderInvoicePage(doc, invoice, fontPath, fontBoldPath);
+            }
+
+            doc.end();
+          } catch (error) {
+            reject(error);
+          }
+        });
+  }
+
+  async streamInvoiceBundlePdf(invoices, res) {
+    try {
+      const buffer = await this.generateInvoiceBundlePdf(invoices);
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error generating invoice bundle:", error);
+      if (!res.headersSent) res.status(500).send("Error generating invoice bundle");
     }
   }
 

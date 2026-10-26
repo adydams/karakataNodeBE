@@ -1,4 +1,5 @@
-const { Wallet, WalletTransaction, Payout, Store, SystemSetting } = require("../models");
+const { Wallet, WalletTransaction, Payout, Store, StorePickupStation, SystemSetting } = require("../models");
+const { Op } = require("sequelize");
 const sequelize = require("../db/database");
 const PaymentService = require("./paymentServices"); // Assume this has the Paystack Transfer API wrapper
 const auditService = require("./auditService");
@@ -16,7 +17,11 @@ class WalletService {
       for (const item of order.items) {
         const product = await require('../models').Product.findByPk(item.productId);
         if (!product) throw new Error(`Product ${item.productId} not found`);
-        const store = await Store.findByPk(product.storeId);
+        let store = product.storeId ? await Store.findByPk(product.storeId) : null;
+        if (!store && item.pickupStationId) {
+          const station = await StorePickupStation.findByPk(item.pickupStationId);
+          if (station?.storeId) store = await Store.findByPk(station.storeId);
+        }
         if (!store) throw new Error(`Store for product ${item.productId} not found`);
 
         const rate = setting.defaultCommissionRate;
@@ -265,6 +270,127 @@ class WalletService {
       }, { transaction: t });
 
       await t.commit();
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  }
+
+  /**
+   * Manually adjust a store's available balance.
+   */
+  async adjustBalance({ walletId, amount, type, description, adminUserId }) {
+    const t = await sequelize.transaction();
+    try {
+      const wallet = await Wallet.findByPk(walletId, { transaction: t });
+      if (!wallet) throw new Error("Wallet not found");
+
+      const oldBalance = wallet.availableBalance;
+      const adjustmentAmount = type === "CREDIT" ? amount : -amount;
+
+      if (type === "DEBIT" && wallet.availableBalance < amount) {
+        throw new Error("Insufficient available balance for debit adjustment");
+      }
+
+      // 1. Update Wallet balance
+      await Wallet.increment({ availableBalance: adjustmentAmount }, { where: { id: walletId }, transaction: t });
+
+      const updatedWallet = await Wallet.findByPk(walletId, { transaction: t });
+      const newBalance = updatedWallet.availableBalance;
+
+      // 2. Create Ledger Entry
+      await WalletTransaction.create({
+        walletId,
+        type: "ADJUSTMENT",
+        status: "COMPLETED",
+        netAmount: adjustmentAmount,
+        description: description || "Manual balance adjustment",
+      }, { transaction: t });
+
+      // 3. Log to Audit Trail
+      await auditService.log({
+        userId: adminUserId,
+        action: type === "CREDIT" ? "BALANCE_CREDIT" : "BALANCE_DEBIT",
+        entityType: "Wallet",
+        entityId: walletId,
+        oldValue: { availableBalance: oldBalance },
+        newValue: { availableBalance: newBalance }
+      });
+
+      await t.commit();
+      return { success: true, newBalance };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  }
+
+  /**
+   * Process a manual payout request.
+   */
+  async processManualPayout({ walletId, amount, adminUserId }) {
+    const t = await sequelize.transaction();
+    try {
+      const wallet = await Wallet.findByPk(walletId, {
+        include: [{ model: Store, as: 'store' }],
+        transaction: t
+      });
+
+      if (!wallet) throw new Error("Wallet not found");
+      if (wallet.availableBalance < amount) throw new Error("Insufficient available balance for payout");
+
+      const store = wallet.store;
+      if (!store.payoutAccountNumber || !store.payoutBankCode) {
+        throw new Error("Store payout bank details are incomplete");
+      }
+
+      // 1. Initiate Transfer via PaymentService
+      const transfer = await PaymentService.createTransfer({
+        amount,
+        accountNumber: store.payoutAccountNumber,
+        bankCode: store.payoutBankCode,
+        accountName: store.payoutAccountName,
+      });
+
+      // 2. Record Payout
+      const payout = await Payout.create({
+        storeId: store.id,
+        walletId: wallet.id,
+        amount,
+        accountNumber: store.payoutAccountNumber,
+        bankCode: store.payoutBankCode,
+        accountName: store.payoutAccountName,
+        paystackTransferCode: transfer.code,
+        paystackTransferRef: transfer.reference,
+        status: "PROCESSING",
+        initiatedAt: new Date(),
+      }, { transaction: t });
+
+      // 3. Record WalletTransaction (PAYOUT_DEBIT)
+      await WalletTransaction.create({
+        walletId,
+        storeId: store.id,
+        type: "PAYOUT_DEBIT",
+        status: "PROCESSING",
+        netAmount: -amount,
+        reference: transfer.reference,
+        description: `Manual payout initiated by admin: ${transfer.reference}`,
+      }, { transaction: t });
+
+      // 4. Deduct funds
+      await Wallet.decrement({ availableBalance: amount }, { where: { id: walletId }, transaction: t });
+
+      // 5. Log to Audit Trail
+      await auditService.log({
+        userId: adminUserId,
+        action: "TRIGGER_PAYOUT",
+        entityType: "Payout",
+        entityId: payout.id,
+        newValue: { amount, walletId, status: "PROCESSING" }
+      });
+
+      await t.commit();
+      return { success: true, payoutId: payout.id };
     } catch (err) {
       await t.rollback();
       throw err;

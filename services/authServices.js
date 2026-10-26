@@ -344,7 +344,8 @@ class AuthServices {
       passwordHash: null,
       roleId: customerRole.id,
       provider,
-      providerId
+      providerId,
+      isActive: true,
     });
     const token = signToken({ id: user.id, role: "Customer" });
     return { user, token };

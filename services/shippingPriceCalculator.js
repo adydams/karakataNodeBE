@@ -37,6 +37,8 @@ class ShippingPriceCalculator {
    * @param {Object} destination - { latitude, longitude }
    * @param {number} totalWeightKg - Total weight of all items in kg
    * @returns {Promise<number>} Calculated price
+   * @throws {Error} When origin or destination coordinates are missing —
+   *   no fallback estimate is returned so an inaccurate fee is never charged.
    */
   async calculateInternalPrice(origin, destination, totalWeightKg) {
     const settings = await SystemSetting.findOne();
@@ -48,10 +50,11 @@ class ShippingPriceCalculator {
     const pricePerKm = parseFloat(settings.internalPricePerKm || 0);
     const pricePerKg = parseFloat(settings.internalPricePerKg || 0);
 
-    // Fallback: If coordinates are missing, return a reasonable flat estimate
-    // instead of failing. (Base Fee + a small distance/weight buffer)
     if (!origin?.latitude || !origin?.longitude || !destination?.latitude || !destination?.longitude) {
-      return baseFee + 500 + (totalWeightKg * pricePerKg);
+      throw new Error(
+        "Karakata Internal Fleet is unavailable: the pickup station or delivery address has no coordinates. " +
+        "Please update the pickup station's pinned location in the admin dashboard."
+      );
     }
 
     const distance = ShippingPriceCalculator.calculateDistance(

@@ -57,6 +57,7 @@ exports.createAddress = async (userId, data) => {
   }
 
   // Create address with the returned shipbubbleAddressCode and coordinates
+  // Prefer the client's map-picked coordinates (more precise); fall back to ShipBubble's response.
   const address = await Address.create({
     userId,
     addressLine1,
@@ -66,8 +67,12 @@ exports.createAddress = async (userId, data) => {
     postalCode,
     country,
     shipbubbleAddressCode: validationResult.address_code,
-    latitude: validationResult.latitude || null,
-    longitude: validationResult.longitude || null,
+    latitude: normalized.latitude !== undefined && normalized.latitude !== null && normalized.latitude !== ""
+      ? Number(normalized.latitude)
+      : (validationResult.latitude || null),
+    longitude: normalized.longitude !== undefined && normalized.longitude !== null && normalized.longitude !== ""
+      ? Number(normalized.longitude)
+      : (validationResult.longitude || null),
   });
 
   return address;
@@ -146,6 +151,7 @@ exports.updateAddress = async (id, userId, data) => {
   }
 
   // All good — persist update with new shipbubbleAddressCode and coordinates
+  // Prefer the client's map-picked coordinates (more precise); fall back to ShipBubble's response, then existing values.
   await address.update({
     addressLine1: newAddressLine1,
     addressLine2: newAddressLine2,
@@ -154,8 +160,12 @@ exports.updateAddress = async (id, userId, data) => {
     postalCode: postalCode ?? address.postalCode,
     country: newCountry,
     shipbubbleAddressCode: validationResult.address_code,
-    latitude: validationResult.latitude || address.latitude,
-    longitude: validationResult.longitude || address.longitude,
+    latitude: data.latitude !== undefined && data.latitude !== null && data.latitude !== ""
+      ? Number(data.latitude)
+      : (validationResult.latitude || address.latitude),
+    longitude: data.longitude !== undefined && data.longitude !== null && data.longitude !== ""
+      ? Number(data.longitude)
+      : (validationResult.longitude || address.longitude),
   });
 
   return address;

@@ -20,12 +20,27 @@ const sequelize = require('../db/database');
   },
   quantity: { type: DataTypes.INTEGER, allowNull: false },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+  subtotal: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
+  productName: { type: DataTypes.STRING, allowNull: true },
   productDiscountId: {
     type: DataTypes.UUID,
     allowNull: true,
     references: { model: "ProductDiscounts", key: "id" }
   },
   isDeleted: { type: DataTypes.BOOLEAN, defaultValue: false },
+  approvalStatus: {
+    type: DataTypes.ENUM("pending", "approved", "expired", "declined"),
+    allowNull: false,
+    defaultValue: "pending",
+  },
+  approvalDeadline: { type: DataTypes.DATE, allowNull: true },
+  approvalRespondedAt: { type: DataTypes.DATE, allowNull: true },
+  approvalReason: { type: DataTypes.STRING, allowNull: true },
+  status: {
+    type: DataTypes.STRING,
+    defaultValue: 'PENDING',
+    allowNull: true
+  },
 }, {
   tableName: 'orderitems',
   timestamps: true,

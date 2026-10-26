@@ -9,7 +9,7 @@ class SourcingService {
    * @returns {Promise<{ allocations: Array, fetchRate: number }>}
    */
   async allocateStock(productId, requiredQty, preference = {}) {
-    const { receiverAddress, chosenStationId } = preference;
+    const { receiverAddress, chosenStationId, chosenHub } = preference;
 
     // 1. Get all stations that have this product
     const productStations = await Inventory.findAll({
@@ -70,9 +70,8 @@ class SourcingService {
           });
           remainingNeeded -= taken;
 
-          if (receiverAddress) {
-            totalFetchRate += this._calculateFetchRate(ps.pickupStation, receiverAddress, taken);
-          }
+          if (receiverAddress) totalFetchRate += this._calculateFetchRate(ps.pickupStation, receiverAddress, taken);
+          if (chosenHub) totalFetchRate += this._calculateFetchRate(ps.pickupStation, chosenHub, taken);
         }
       }
     }
@@ -83,7 +82,7 @@ class SourcingService {
 
     return {
       allocations,
-      fetchRate: receiverAddress ? totalFetchRate : 0 // 0 for customer pickup
+      fetchRate: totalFetchRate
     };
   }
 
@@ -102,13 +101,37 @@ class SourcingService {
   _mockDistance(station, address) {
     // Mock: distance is based on city match (0 if same city, 10 if different)
     // In production, use coordinates and Haversine formula or an API.
-    return station.address.includes(address.city) ? 0 : 10;
+    const stationAddress = String(station?.address || "").toLowerCase();
+    const city = String(address?.city || "").toLowerCase();
+    if (!city) return 10;
+    return stationAddress.includes(city) ? 0 : 10;
   }
 
-  _calculateFetchRate(station, address, qty) {
-    // Mock fetch rate: base rate * distance * qty
-    const dist = this._mockDistance(station, address);
+  _calculateFetchRate(station, destination, qty) {
+    const dist = this._distanceInKm(station, destination);
+    // Stations without usable coordinates must never produce a distance-based
+    // charge (Number(null) === 0 once mapped the distance to (0,0) ~ 816km).
+    if (dist === null) return 0;
     return dist * 100 * qty;
+  }
+
+  _distanceInKm(origin, destination) {
+    const toCoord = (value) =>
+      value === null || value === undefined || value === "" ? NaN : Number(value);
+    const lat1 = toCoord(origin?.latitude);
+    const lon1 = toCoord(origin?.longitude);
+    const lat2 = toCoord(destination?.latitude);
+    const lon2 = toCoord(destination?.longitude);
+    if (![lat1, lon1, lat2, lon2].every(Number.isFinite)) {
+      return null;
+    }
+    const radians = (value) => value * Math.PI / 180;
+    const dLat = radians(lat2 - lat1);
+    const dLon = radians(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(dLon / 2) ** 2;
+    const dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Number.isFinite(dist) ? dist : null;
   }
 }
 

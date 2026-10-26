@@ -1,5 +1,5 @@
 ﻿// services/productServices.js
-const { sequelize, Product, ProductImage, Inventory, ProductPickupStation, StorePickupStation, ProductDiscount } = require("../models");
+const { sequelize, Product, ProductImage, Inventory, ProductPickupStation, StorePickupStation, ProductDiscount, Store, SystemSetting, User, Role } = require("../models");
 const QRCode = require("qrcode");
 const cloudinary = require("../config/cloudinary");
 const InventoryService = require("./inventoryServices");
@@ -21,6 +21,13 @@ class ProductService {
   async createProduct(data, files) {
     const t = await sequelize.transaction();
     try {
+      if (!data.storeId) throw new Error("Store is required when creating a product");
+      const store = await Store.findByPk(data.storeId, { transaction: t });
+      if (!store || store.isDeleted) throw new Error("Selected store was not found or is inactive");
+
+      const setting = await SystemSetting.findOne({ transaction: t });
+      const requiresApproval = setting?.productApprovalRequired === true;
+      const approvalHours = Number(setting?.productApprovalSlaHours || 48);
       const product = await Product.create({
         name: data.name,
         description: data.description || null,
@@ -35,9 +42,35 @@ class ProductService {
         widthCm: data.widthCm || null,
         heightCm: data.heightCm || null,
         logisticsCategoryId: data.logisticsCategoryId || null,
+        fulfillmentMethod: data.fulfillmentMethod === "HUB_DROPOFF" ? "HUB_DROPOFF" : "RIDER_PICKUP",
+        fulfillmentHubId: data.fulfillmentMethod === "HUB_DROPOFF" ? (data.fulfillmentHubId || null) : null,
+        status: requiresApproval ? "pending_review" : "approved",
+        approvalDeadline: requiresApproval && setting?.productApprovalSlaEnabled !== false
+          ? new Date(Date.now() + approvalHours * 60 * 60 * 1000)
+          : null,
       }, {
         transaction: t
       });
+      if (requiresApproval && store.ownerUserId) {
+        await require("./notificationService").notify(store.ownerUserId, {
+          type: "PRODUCT_PENDING_REVIEW",
+          title: "Product awaiting approval",
+          message: `${product.name} is awaiting administrator approval.`,
+          metadata: { productId: product.id },
+          sendEmail: true,
+        }, t);
+        const admins = await User.findAll({
+          include: [{ model: Role, as: "role", where: { name: { [require("sequelize").Op.in]: ["Admin", "SuperAdmin", "SystemAdmin"] } } }],
+          attributes: ["id"],
+          transaction: t,
+        });
+        await Promise.all(admins.map((admin) => require("./notificationService").notify(admin.id, {
+          type: "PRODUCT_APPROVAL_REQUIRED",
+          title: "New product awaiting approval",
+          message: `${product.name} requires approval before it can go live.`,
+          metadata: { productId: product.id, storeId: store.id },
+        }, t)));
+      }
 
       let discounts = data.discounts;
       if (typeof discounts === 'string') {
@@ -153,7 +186,7 @@ class ProductService {
         }
       });
 
-      return Product.findByPk(product.id, {
+      return Product.unscoped().findByPk(product.id, {
         include: [
           { model: ProductImage, as: "images", attributes: ["url"] },
           {
@@ -172,7 +205,7 @@ class ProductService {
   async updateProduct(id, data, files) {
     const t = await sequelize.transaction();
     try {
-      const product = await Product.findOne({
+      const product = await Product.unscoped().findOne({
         where: { id, isDeleted: false },
         transaction: t
       });
@@ -204,7 +237,13 @@ class ProductService {
         lengthCm: clean(data.lengthCm, product.lengthCm),
         widthCm: clean(data.widthCm, product.widthCm),
         heightCm: clean(data.heightCm, product.heightCm),
-        logisticsCategoryId: clean(data.logisticsCategoryId, product.logisticsCategoryId)
+        logisticsCategoryId: clean(data.logisticsCategoryId, product.logisticsCategoryId),
+        fulfillmentMethod: data.fulfillmentMethod !== undefined
+          ? (data.fulfillmentMethod === "HUB_DROPOFF" ? "HUB_DROPOFF" : "RIDER_PICKUP")
+          : product.fulfillmentMethod,
+        fulfillmentHubId: data.fulfillmentMethod !== undefined
+          ? (data.fulfillmentMethod === "HUB_DROPOFF" ? (data.fulfillmentHubId || null) : null)
+          : product.fulfillmentHubId,
       }, { transaction: t });
 
       if (data.discounts !== undefined) {
@@ -290,7 +329,7 @@ class ProductService {
         }
       });
 
-      return Product.findByPk(id, {
+      return Product.unscoped().findByPk(id, {
         include: [
           { model: ProductImage, as: "images", attributes: ["url"] },
           {
@@ -313,7 +352,7 @@ class ProductService {
   async getAllProducts({ limit = 10, offset = 0, search, categoryId, userRole = 'admin' }) {
     const { Op } = require('sequelize');
 
-    let whereClause = { isDeleted: false };
+    let whereClause = { isDeleted: false, status: "approved" };
 
     if (search) {
       whereClause[Op.or] = [
@@ -390,8 +429,40 @@ class ProductService {
     return { products: finalProducts, total: count };
   }
 
+  async getPendingApprovalProducts() {
+    return Product.unscoped().findAll({
+      where: { isDeleted: false, status: "pending_review" },
+      include: [{ model: Store, as: "store", attributes: ["id", "name", "ownerUserId"] }],
+      order: [["createdAt", "ASC"]],
+    });
+  }
+
+  async decideApproval(id, decision, rejectionReason, reviewerId) {
+    if (!["approved", "rejected"].includes(decision)) throw new Error("Decision must be approved or rejected");
+    const product = await Product.unscoped().findByPk(id, { include: [{ model: Store, as: "store" }] });
+    if (!product) throw new Error("Product not found");
+    if (product.status !== "pending_review") throw new Error(`Product is already ${product.status}`);
+    if (decision === "rejected" && !rejectionReason) throw new Error("Rejection reason is required");
+    await product.update({
+      status: decision,
+      rejectionReason: decision === "rejected" ? rejectionReason : null,
+      approvalReviewedBy: reviewerId || null,
+      approvalReviewedAt: new Date(),
+    });
+    if (product.store?.ownerUserId) {
+      await require("./notificationService").notify(product.store.ownerUserId, {
+        type: `PRODUCT_${decision.toUpperCase()}`,
+        title: decision === "approved" ? "Product approved" : "Product rejected",
+        message: decision === "approved" ? `${product.name} is now live.` : `${product.name} was rejected: ${rejectionReason}`,
+        metadata: { productId: product.id, reason: rejectionReason || null },
+        sendEmail: true,
+      });
+    }
+    return product;
+  }
+
   async getProductById(id){
-    return Product.findOne({
+    const product = await Product.unscoped().findOne({
       where: { id, isDeleted: false },
       include: [
         { model: ProductImage, as: "images", attributes: ["url"] },
@@ -403,11 +474,19 @@ class ProductService {
         { model: ProductDiscount, as: "discounts" }
       ]
     });
+    if (!product) return null;
+
+    const pJson = product.toJSON();
+    pJson.availableStock = (pJson.inventories || []).reduce(
+      (total, inv) => total + Math.max(Number(inv.quantityOnHand || 0) - Number(inv.quantityReserved || 0), 0),
+      0
+    );
+    return pJson;
   }
 
   async getRandomDiscountedProducts(limit = 5) {
     const discountedProducts = await Product.findAll({
-      where: { isDeleted: false },
+      where: { isDeleted: false, status: "approved" },
       include: [
         { model: ProductDiscount, as: "discounts", where: { isActive: true } },
         { model: ProductImage, as: "images", attributes: ["url"] },
@@ -434,8 +513,43 @@ class ProductService {
     return results;
   }
 
+  async getAdvertisedDiscounts() {
+      const now = new Date();
+      const discounts = await require("../models").Discount.findAll({
+        where: {
+          displayInAdverts: true,
+          isActive: true,
+          isDeleted: false,
+          [require("sequelize").Op.and]: [
+            {
+              [require("sequelize").Op.or]: [
+                { advertStartDate: null },
+                { advertStartDate: { [require("sequelize").Op.lte]: now } },
+              ],
+            },
+            {
+              [require("sequelize").Op.or]: [
+                { advertEndDate: null },
+                { advertEndDate: { [require("sequelize").Op.gte]: now } },
+              ],
+            },
+            {
+              [require("sequelize").Op.or]: [
+                { expiresAt: null },
+                { expiresAt: { [require("sequelize").Op.gte]: now } },
+              ],
+            },
+          ],
+        },
+        order: [["advertEndDate", "ASC"], ["createdAt", "DESC"]],
+        limit: 6,
+        attributes: ["id", "title", "code", "type", "value", "advertStartDate", "advertEndDate"],
+      });
+      return discounts;
+  }
+
   async deleteProduct(id) {
-    const product = await Product.findOne({ where: { id, isDeleted: false } });
+    const product = await Product.unscoped().findOne({ where: { id, isDeleted: false } });
     if (!product) return null;
     await product.update({ isDeleted: true });
     await Inventory.update({ isDeleted: true }, { where: { productId: id } });

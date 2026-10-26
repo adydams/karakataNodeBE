@@ -84,6 +84,9 @@ router.get("/", authenticate,
  *       404:
  *         description: Store not found
  */
+router.get("/order-approvals", authenticate, authorizeRole("StoreAdmin"), storeController.getOrderApprovals);
+router.patch("/order-approvals/:orderItemId", authenticate, authorizeRole("StoreAdmin"), storeController.decideOrderApproval);
+
 router.get("/:id", authenticate, authorizeRole("Admin", "SuperAdmin"),
  storeController.getById);
 

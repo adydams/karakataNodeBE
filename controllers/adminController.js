@@ -4,6 +4,7 @@ const Role = require("../models/roleModel");
 const User = require("../models/userModel");
 const { Op } = require("sequelize");
 const auditService = require("../services/auditService");
+const SystemSetting = require("../models/systemSettingModel");
 
 exports.filterAdmins = async (req, res) => {
   try {
@@ -276,6 +277,42 @@ exports.deleteAdmin = async (req, res) => {
     });
 
     res.json({ success: true, message: "Admin deleted successfully" });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.getShippingSettings = async (req, res) => {
+  try {
+    const settings = await SystemSetting.findOne();
+    if (!settings) {
+      return res.status(404).json({ success: false, message: "System settings not found" });
+    }
+    res.json({ success: true, data: settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.updateShippingSettings = async (req, res) => {
+  try {
+    const updates = req.body;
+    const settings = await SystemSetting.findOne();
+    if (!settings) {
+      return res.status(404).json({ success: false, message: "System settings not found" });
+    }
+
+    await settings.update(updates);
+
+    await auditService.log({
+      userId: req.user?.id,
+      action: "UPDATE_SHIPPING_SETTINGS",
+      entityType: "SystemSetting",
+      entityId: settings.id,
+      newValue: updates,
+    });
+
+    res.json({ success: true, message: "Shipping settings updated successfully", data: settings });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }

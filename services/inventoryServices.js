@@ -156,6 +156,28 @@ class InventoryServices {
     return inv;
   }
 
+  /**
+   * Validate stock without holding it. Unpaid orders must not reserve
+   * stock (carts are not holds); stock is deducted only when payment
+   * is verified (commitForOrder).
+   */
+  async validateAvailabilityForOrder(items, transaction) {
+    for (const item of items) {
+      const inv = await Inventory.findOne({
+        where: { productId: item.productId, pickupStationId: item.pickupStationId, isDeleted: false },
+        transaction,
+      });
+      const available = inv
+        ? Number(inv.quantityOnHand || 0) - Number(inv.quantityReserved || 0)
+        : 0;
+      if (available < item.quantity) {
+        throw new Error(
+          `Insufficient stock for product ${item.productId} at station ${item.pickupStationId}. Please review your cart and try again.`
+        );
+      }
+    }
+  }
+
   async reserveForOrder(items, transaction) {
     for (const item of items) {
       await this.reserveStock(item.productId, item.pickupStationId, item.quantity, transaction);

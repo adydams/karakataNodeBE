@@ -36,6 +36,15 @@ exports.getFeaturedDiscounts = async(req,res)=>{
   }
 };
 
+exports.getAdvertisedDiscounts = async (req, res) => {
+  try {
+    const discounts = await ProductService.getAdvertisedDiscounts();
+    return res.status(200).json({ success: true, data: discounts });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getAll = async(req,res)=>{
   try{
     const { limit, offset, search, categoryId } = req.query;
@@ -131,4 +140,27 @@ exports.delete = async(req,res)=>{
         message:error.message
       });
     }
+};
+
+exports.pendingApprovals = async (req, res) => {
+  try {
+    const products = await ProductService.getPendingApprovalProducts();
+    return res.json({ success: true, data: products });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.decideApproval = async (req, res) => {
+  try {
+    const product = await ProductService.decideApproval(
+      req.params.id,
+      req.body.decision,
+      req.body.rejectionReason,
+      req.user?.id
+    );
+    return res.json({ success: true, data: product });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
 };

@@ -1,15 +1,35 @@
-const { Store, StorePickupStation, ProductPickupStation, Inventory, Product } = require("../models");
+const { Store, StorePickupStation, ProductPickupStation, Inventory, Product, User } = require("../models");
 const ShipBubbleAdapter = require("../services/ShipBubbles/shipbubbleAdapterSafe");
 const InventoryService = require("./inventoryServices");
 const sequelize = require("../db/database");
 
+function normalizeCoord(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
 class PickupStationServices {
   async createPickupStation(data) {
-    const store = await Store.findByPk(data.storeId);
+    // Resolve the owning store. Admin-created platform stations may omit
+    // storeId — fall back to the store that owns the product being assigned,
+    // or the first existing store as a last resort.
+    let store = null;
+    if (data.storeId) {
+      store = await Store.findByPk(data.storeId);
+    } else if (data.productId) {
+      store = await Store.findOne({
+        include: [{ model: Product, as: "products", where: { id: data.productId }, required: true }],
+      });
+    }
+    if (!store) {
+      store = await Store.findOne({ where: { isDeleted: false }, order: [["createdAt", "ASC"]] });
+    }
 
     if (!store) {
-      throw new Error("Store not found");
+      throw new Error("Store not found. Create a store before adding pickup stations.");
     }
+    data.storeId = store.id;
 
     const exists = await StorePickupStation.findOne({
       where: {
@@ -22,6 +42,9 @@ class PickupStationServices {
     if (exists) {
       throw new Error("Pickup station name already exists");
     }
+
+    const clientLat = normalizeCoord(data.latitude);
+    const clientLng = normalizeCoord(data.longitude);
 
     try {
       let email = data.email;
@@ -42,13 +65,17 @@ class PickupStationServices {
         email: email,
         phone: data.phone,
         address: data.address,
+        // ShipBubble uses coordinates for precise geocoding/valuation when provided.
+        latitude: clientLat ?? undefined,
+        longitude: clientLng ?? undefined,
       });
       if (!result?.address_code) {
         throw new Error("This address is invalid. Please check the address details.");
       }
       data.shipbubbleAddressCode = result.address_code;
-      data.latitude = result.latitude || null;
-      data.longitude = result.longitude || null;
+      // Map-picked coordinates win; fall back to ShipBubble's response when present.
+      data.latitude = clientLat ?? result.latitude ?? null;
+      data.longitude = clientLng ?? result.longitude ?? null;
     } catch (error) {
       throw new Error(error.message || "Unable to validate pickup station address");
     }
@@ -152,13 +179,21 @@ class PickupStationServices {
           email: email,
           phone: data.phone || station.phone,
           address: data.address,
+          // ShipBubble uses coordinates for precise geocoding/valuation when provided.
+          latitude: normalizeCoord(data.latitude) ?? station.latitude ?? undefined,
+          longitude: normalizeCoord(data.longitude) ?? station.longitude ?? undefined,
         });
         data.shipbubbleAddressCode = result.address_code;
-        data.latitude = result.latitude || station.latitude;
-        data.longitude = result.longitude || station.longitude;
+        // Map-picked coordinates win; fall back to ShipBubble's response, then existing values.
+        data.latitude = normalizeCoord(data.latitude) ?? result.latitude ?? station.latitude;
+        data.longitude = normalizeCoord(data.longitude) ?? result.longitude ?? station.longitude;
       } catch (error) {
         throw new Error(error.message || "Unable to validate pickup station address");
       }
+    } else {
+      // Address unchanged: still allow coordinate updates from the map picker.
+      if (data.latitude !== undefined) data.latitude = normalizeCoord(data.latitude) ?? station.latitude;
+      if (data.longitude !== undefined) data.longitude = normalizeCoord(data.longitude) ?? station.longitude;
     }
 
     return await station.update(data);

@@ -1,7 +1,7 @@
 // controllers/paymentController.js
 const PaymentService = require("../services/paymentServices");
 const CartService = require("../services/cartServices");
-const { Order, User, Cart, CartItem } = require("../models");
+const { sequelize, Order, Payment, User, Cart, CartItem } = require("../models");
 
 class PaymentController {
   static async initialize(req, res) {
@@ -13,6 +13,8 @@ class PaymentController {
       const user = await User.findByPk(userId);
 
       if (!order) return res.status(404).json({ message: "Order not found" });
+      if (order.userId !== userId) return res.status(403).json({ message: "You cannot initialize this order" });
+      if (order.status !== "PENDING") return res.status(409).json({ message: "This order is no longer awaiting payment" });
 
       const { paymentUrl, paymentReference } = await PaymentService.initialize({
         order,
@@ -21,10 +23,22 @@ class PaymentController {
         redirectUrl: process.env.BACKEND_URL
       });
 
-      // Save payment reference to the order for verification
-      order.paymentReference = paymentReference;
-      order.paymentGateway = gateway || order.paymentGateway;
-      await order.save();
+      const transaction = await sequelize.transaction();
+      try {
+        await Order.update(
+          { paymentReference, paymentGateway: gateway || order.paymentGateway },
+          { where: { id: order.id, status: "PENDING" }, transaction }
+        );
+        const [updatedPayments] = await Payment.update(
+          { reference: paymentReference, paymentUrl },
+          { where: { orderId: order.id, status: "PENDING" }, transaction }
+        );
+        if (!updatedPayments) throw new Error("Pending payment record not found");
+        await transaction.commit();
+      } catch (updateError) {
+        await transaction.rollback();
+        throw updateError;
+      }
 
       res.status(200).json({ paymentUrl, paymentReference });
     } catch (err) {
@@ -50,15 +64,20 @@ class PaymentController {
       console.log("Payment Verification Result:", JSON.stringify(result, null, 2));
 
       if (result.success) {
-        order.status = "PAID";
-        order.paymentStatus = "SUCCESS";
+        const OrderServices = require("../services/orderServices");
+        await OrderServices.verify(orderId);
 
-        const userCart = await Cart.findOne({ where: { userId: order.userId }, isDeleted: false });
-        if (userCart) {
-          await CartItem.destroy({ where: { cartId: userCart.id } });
-          console.log(`🧹 Cart cleared for user ${order.userId} after successful payment`);
+        // Clear the buyer's cart once payment is confirmed (mirrors the
+        // webhook path, which already does this).
+        try {
+          const { Cart, CartItem } = require("../models");
+          const userCart = await Cart.findOne({ where: { userId: order.userId, isDeleted: false } });
+          if (userCart) {
+            await CartItem.destroy({ where: { cartId: userCart.id } });
+          }
+        } catch (cartErr) {
+          console.error(`Cart clear failed for order ${order.id}:`, cartErr.message);
         }
-        await order.save();
 
         if (req.headers['accept'] && req.headers['accept'].includes('application/json')) {
           return res.status(200).json({ success: true, orderId: order.id });

@@ -16,10 +16,10 @@ class OrderController {
         requestToken,
         serviceCode,
         courierId,
-        chosenStationId
+        chosenHubId
       } = req.body;
 
-      const { order, paymentUrl } = await OrderServices.checkout(userId, {
+      const { order, paymentUrl, paymentInitializationRequired, paymentInitializationError } = await OrderServices.checkout(userId, {
         shippingAddressId,
         gateway,
         email,
@@ -29,7 +29,9 @@ class OrderController {
         requestToken,
         serviceCode,
         courierId,
-        chosenStationId
+        chosenHubId,
+        shippingProvider: req.body.shippingProvider,
+        discountCode: req.body.discountCode
       });
 
       return res.status(201).json({
@@ -37,6 +39,8 @@ class OrderController {
         message: "Order created, proceed to payment",
         order,
         paymentUrl,
+        paymentInitializationRequired,
+        paymentInitializationError,
       });
     } catch (err) {
       return res.status(400).json({
@@ -104,6 +108,58 @@ class OrderController {
     }
   }
 
+  async getMyOrders(req, res) {
+    try {
+      const userId = req.user.id;
+      const result = await OrderServices.getMyOrders(userId);
+      return res.json({
+        success: true,
+        data: result
+      });
+    } catch (err) {
+      return res.status(400).json({
+        success: false,
+        message: err.message
+      });
+    }
+  }
+
+  async retryPayment(req, res) {
+    try {
+      const { orderId } = req.params;
+      const userId = req.user.id;
+      const result = await OrderServices.retryPayment(orderId, userId);
+      return res.json({ success: true, ...result });
+    } catch (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+  }
+
+  async getCheckoutQuote(req, res) {
+    try {
+      const userId = req.user.id;
+      const {
+        shippingAddressId,
+        shippingMethod,
+        chosenHubId,
+        discountCode,
+        courierFee,
+      } = req.body;
+
+      const quote = await OrderServices.getCheckoutQuote(userId, {
+        shippingAddressId,
+        shippingMethod,
+        chosenHubId,
+        discountCode,
+        courierFee,
+      });
+
+      return res.json({ success: true, data: quote });
+    } catch (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+  }
+
   async getSummary(req, res) {
     try {
       const summary = await OrderServices.getOrderSummary();
@@ -163,6 +219,7 @@ class OrderController {
         status: invoiceData.order.status,
         items: invoiceData.items.map(item => ({
           productName: item.product.name,
+          productImage: item.product.image,
           quantity: item.quantity,
           price: item.price,
           subtotal: item.subtotal
@@ -182,6 +239,42 @@ class OrderController {
           message: err.message
         });
       }
+    }
+  }
+
+  async getInvoiceBundlePdf(req, res) {
+        try {
+          const userId = req.user ? req.user.id : null;
+          if (!userId) return res.status(401).json({ success: false, message: "Authentication required" });
+
+          const orders = await OrderServices.getMyOrders(userId);
+          const invoices = await Promise.all(orders.map(async order => {
+            const invoiceData = await OrderServices.getInvoice(order.id, userId);
+            return {
+              orderId: invoiceData.order.id,
+              totalAmount: invoiceData.order.totalAmount,
+              shippingFee: invoiceData.order.shippingFee,
+              createdAt: invoiceData.order.createdAt,
+              customerName: invoiceData.order.customer.fullName,
+              customerEmail: invoiceData.order.customer.email,
+              customerPhone: invoiceData.order.customer.phone,
+              shippingAddress: invoiceData.order.shippingAddress?.address,
+              items: invoiceData.items.map(item => ({
+                productName: item.product.name,
+                productImage: item.product.image,
+                quantity: item.quantity,
+                price: item.price,
+                subtotal: item.subtotal,
+              })),
+            };
+          }));
+
+          res.setHeader("Content-Type", "application/pdf");
+          res.setHeader("Content-Disposition", "attachment; filename=Karakata_Invoices.pdf");
+          await emailService.streamInvoiceBundlePdf(invoices, res);
+        } catch (err) {
+          console.error("Invoice bundle generation error:", err.message);
+          if (!res.headersSent) res.status(400).json({ success: false, message: err.message });
     }
   }
 }

@@ -18,9 +18,16 @@ const Notification = sequelize.define("Notification", {
       "ORDER_PAID",
       "ORDER_SHIPPED",
       "ORDER_DELIVERED",
+      "ORDER_ITEM_APPROVAL_REQUIRED",
+      "ORDER_ITEM_APPROVAL_MISSED",
+      "REFUND_FAILED",
+      "PRODUCT_APPROVAL_SLA_OVERDUE",
       "LOW_STOCK",
       "DISCOUNT_APPLIED",
-      "GENERAL"
+      "GENERAL",
+      "SHIPMENT_PICKED_UP",
+      "SHIPMENT_IN_TRANSIT",
+      "SHIPMENT_FAILED"
     ),
     allowNull: false,
   },

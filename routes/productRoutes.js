@@ -104,6 +104,10 @@ router.get(
   "/featured-discounts",
   ProductController.getFeaturedDiscounts
 );
+router.get("/advertised-discounts", ProductController.getAdvertisedDiscounts);
+
+router.get("/admin/pending-approvals", authenticate, authorizeRole("Admin", "SuperAdmin", "SystemAdmin"), ProductController.pendingApprovals);
+router.patch("/:id/approval", authenticate, authorizeRole("Admin", "SuperAdmin", "SystemAdmin"), ProductController.decideApproval);
 
 /**
  * @swagger

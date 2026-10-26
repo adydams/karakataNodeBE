@@ -9,39 +9,43 @@ class CategoryController {
       const { name, description } = req.body;
       const file = req.file;
 
-      if (!name || !description || !file) {
+      if (!name || !description) {
         return res.status(400).json({
-          message: 'Name, description, and image are required.',
+          message: 'Name and description are required.',
         });
       }
 
-      // Upload image to Cloudinary using a stream
-      const uploadResult = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { folder: 'categories' },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
-          }
-        );
+      let imageUrl = null;
+      if (file) {
+        // Upload image to Cloudinary using a stream
+        imageUrl = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: 'categories' },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result.secure_url);
+            }
+          );
 
-        streamifier.createReadStream(file.buffer).pipe(stream);
-      });
- 
+          streamifier.createReadStream(file.buffer).pipe(stream);
+        });
+      }
+
       // Save category to DB
       const category = await categoryService.createCategory({
         name,
         description,
-        imageUrl: uploadResult.secure_url,
+        imageUrl,
       });
-      category.imageUrl =uploadResult.secure_url;
+
       return res.status(201).json({
+        success: true,
         message: 'Category created successfully',
         category,
       });
     } catch (err) {
       console.error('Error creating category:', err);
-      res.status(500).json({ message: 'Internal server error' });
+      res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
   async getAllCategories(req, res) {

@@ -2,7 +2,16 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config(); // load from root .env
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
+function getDatabaseUrl() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) return databaseUrl;
+
+  const url = new URL(databaseUrl);
+  url.searchParams.delete('ssl-mode');
+  return url.toString();
+}
+
+const sequelize = new Sequelize(getDatabaseUrl(), {
   dialect: 'mysql',
   logging: false,
   pool: {

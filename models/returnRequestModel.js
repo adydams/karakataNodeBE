@@ -43,6 +43,14 @@ const ReturnRequest = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    evidence: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
     faultParty: {
       type: DataTypes.ENUM("CUSTOMER", "STORE"),
       allowNull: true,
@@ -85,6 +93,10 @@ const ReturnRequest = sequelize.define(
       allowNull: true,
     },
     refundReference: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    returnRateRequestToken: {
       type: DataTypes.STRING,
       allowNull: true,
     },
