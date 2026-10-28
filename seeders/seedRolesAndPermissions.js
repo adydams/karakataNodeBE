@@ -138,7 +138,8 @@ const seedRolesAndPermissions = async () => {
         phone: "+2348012345678",
         passwordHash: await bcrypt.hash("Super@123", 10),
         roleId: superAdminRole.id,
-      },
+            isActive: true,
+          },
     });
 
     if (created) {

@@ -37,6 +37,11 @@ process.on("uncaughtException", (err) => {
     // Initialize scheduled tasks
     setupMarketplaceCrons();
     console.log('📅 Marketplace cron jobs initialized');
+
+    // Seed roles, permissions and SuperAdmin in the background (idempotent)
+    seedRolesAndPermissions()
+      .then(() => console.log('✅ Roles & permissions seeded'))
+      .catch((err) => console.error('❌ Seeding failed:', err));
   });
 
   // try {

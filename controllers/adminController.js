@@ -93,7 +93,7 @@ exports.getAllAdmins = async (req, res) => {
 exports.Adminlogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const result = await authService.login({ email, password });
+    const result = await authService.login({ email, password, isAdminLogin: true });
 
     if (result.mustVerifyAccount) {
       return res.status(200).json({
