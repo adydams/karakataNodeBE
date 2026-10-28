@@ -46,7 +46,9 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "https://karakata.vercel.app",  
-  "https://karakatang.vercel.app"
+  "https://karakatang.vercel.app",
+  "https://karakatah-xrcv-4ozfivkny-adydams-projects.vercel.app/"
+
 ];
 
 // app.get('/ping', (req, res) => {

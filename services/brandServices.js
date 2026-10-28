@@ -5,8 +5,17 @@ class BrandServices {
     return await Brand.create(data);
   }
 
-  async getAllBrands() {
-    return await Brand.findAll({ include: ["products"] });
+  async getAllBrands({ limit, offset, search } = {}) {
+    const { Op } = require("sequelize");
+    const where = {};
+    if (search) where.name = { [Op.like]: `%${search}%` };
+
+    const findOptions = { where, include: ["products"], order: [["name", "ASC"]] };
+    if (limit !== undefined) findOptions.limit = limit;
+    if (offset !== undefined) findOptions.offset = offset;
+
+    const { count, rows } = await Brand.findAndCountAll(findOptions);
+    return { data: rows, total: count };
   }
 
   async getBrandById(id) {

@@ -11,10 +11,16 @@ class SubCategoryController {
     }
   }
 
-  // Get all SubCategories
+  // Get all SubCategories (with optional filters)
   static async getAll(req, res) {
     try {
-      const subCategories = await SubCategoryService.getAllSubCategories();
+      const { limit, offset, search, categoryId } = req.query;
+      const subCategories = await SubCategoryService.getAllSubCategories({
+        limit: limit ? parseInt(limit) : undefined,
+        offset: offset ? parseInt(offset) : undefined,
+        search,
+        categoryId,
+      });
       res.status(200).json({ success: true, data: subCategories });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

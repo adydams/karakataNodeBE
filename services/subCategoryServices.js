@@ -19,12 +19,23 @@ class SubCategoryServices {
     return await SubCategory.create(data);
   }
 
-  // ✅ Get All SubCategories
-  static async getAllSubCategories() {
-    return await SubCategory.findAll({
-      where: { isDeleted: false },
+  // ✅ Get All SubCategories (with optional filters)
+  static async getAllSubCategories({ limit, offset, search, categoryId } = {}) {
+    const { Op } = require("sequelize");
+    const where = { isDeleted: false };
+    if (categoryId) where.categoryId = categoryId;
+    if (search) where.name = { [Op.like]: `%${search}%` };
+
+    const findOptions = {
+      where,
       include: [{ model: Category, as: 'category' }],
-    });
+      order: [['name', 'ASC']],
+    };
+    if (limit !== undefined) findOptions.limit = limit;
+    if (offset !== undefined) findOptions.offset = offset;
+
+    const { count, rows } = await SubCategory.findAndCountAll(findOptions);
+    return { data: rows, total: count };
   }
 
   // ✅ Get SubCategories by Category ID

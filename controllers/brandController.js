@@ -12,8 +12,13 @@ exports.create = async (req, res) => {
 
 exports.getAll = async (req, res) => {
   try {
-    const brands = await brandService.getAllBrands();
-    res.json({ success: true, brands });
+    const { limit, offset, search } = req.query;
+    const result = await brandService.getAllBrands({
+      limit: limit ? parseInt(limit) : undefined,
+      offset: offset ? parseInt(offset) : undefined,
+      search,
+    });
+    res.json({ success: true, data: result.data, total: result.total, brands: result.data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
